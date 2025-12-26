@@ -36,6 +36,37 @@ class TestAgentBehavior:
         assert len(seen) == 1
         assert seen[0].name == "target"
 
+    def test_agent_location_perception(self):
+        eng = SimulationEngine()
+        # Create a station and one module instance to act as a location
+        st_t = SystemTemplate("station")
+        st = st_t.instantiate(instance_id="station-0")
+        mod_t = SystemTemplate("module")
+        mod = mod_t.instantiate(instance_id="module-1", parent=st)
+        st.add_child(mod)
+
+        # Create two entities and place one in the module
+        e_in = Entity("inside")
+        e_out = Entity("outside")
+        e_in.location = mod
+        e_out.location = st
+        eng.add_entity(e_in, "e_in")
+        eng.add_entity(e_out, "e_out")
+
+        tmpl = SystemTemplate("agent_tmpl")
+        a = Agent(template=tmpl, id="agent2")
+        eng.add_agent(a)
+
+        # No location -> sees both
+        seen_all = a.perceive_entities(eng)
+        assert len(seen_all) == 2
+
+        # Set agent location to the module -> sees only the co-located entity
+        a.set_location(mod)
+        seen_local = a.perceive_entities(eng)
+        assert len(seen_local) == 1
+        assert seen_local[0].name == "inside"
+
     def test_agent_interact_with_system(self):
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         eng = SimulationEngine(start_time=start)

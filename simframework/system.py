@@ -198,6 +198,8 @@ class Agent(SystemInstance):
 
     goals: List[str] = field(default_factory=list)
     current_task: Optional["Scope"] = None
+    # Agent's current location within the system hierarchy (e.g., a module instance)
+    location: Optional["SystemInstance"] = None
 
     def add_goal(self, goal: str) -> None:
         self.goals.append(goal)
@@ -210,12 +212,23 @@ class Agent(SystemInstance):
     def assign_task(self, task: "Scope") -> None:
         self.current_task = task
 
+    def set_location(self, location: "SystemInstance") -> None:
+        """Set the agent's current location to a SystemInstance (e.g., module)."""
+        self.location = location
+
+    def clear_location(self) -> None:
+        """Clear the agent's current location."""
+        self.location = None
+
     def perceive_entities(self, engine: "SimulationEngine", predicate: Optional[callable] = None):
         """Return entities visible to this agent.
 
         If `predicate` is provided it will be applied to each `Entity` and
-        only those for which it returns True will be returned. By default all
-        registered entities are returned.
+        only those for which it returns True will be returned.
+
+        When the agent has a `location` set and `predicate` is None, perception
+        defaults to entities whose `location` attribute equals the agent's
+        location. This provides a simple location-based sensing model.
         """
         # Import locally to avoid circular imports at module import time
         from .entity import Entity  # type: ignore
@@ -223,8 +236,16 @@ class Agent(SystemInstance):
         for ent in engine.entities.values():
             if not isinstance(ent, Entity):
                 continue
-            if predicate is None or predicate(ent):
-                visible.append(ent)
+            if predicate is not None:
+                if predicate(ent):
+                    visible.append(ent)
+                continue
+            # Default behaviour: if agent has a location, only show co-located entities
+            if self.location is not None:
+                if getattr(ent, "location", None) == self.location:
+                    visible.append(ent)
+                continue
+            visible.append(ent)
         return visible
 
     def interact_with_system(self, engine: "SimulationEngine", system_id: str, delay: float, callback, *args, **kwargs):
