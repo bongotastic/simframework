@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Minimal Python simulation framework starter"
 readme = "README.md"
 requires-python = ">=3.8"
+dependencies = ["PyYAML>=6.0"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.0"
