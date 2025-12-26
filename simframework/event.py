@@ -20,14 +20,11 @@ if TYPE_CHECKING:
 class Event:
     data: Dict[str, Any] = field(default_factory=dict)
     timespan: datetime.timedelta = field(default_factory=lambda: datetime.timedelta(0))
-    category: Optional[str] = None
     scope: Optional["Scope"] = None
     system: Optional["SystemInstance"] = None
 
     def __repr__(self) -> str:  # pragma: no cover - trivial
         parts = [f"data={self.data!r}", f"timespan={self.timespan}"]
-        if self.category is not None:
-            parts.append(f"category={self.category!r}")
         if self.scope is not None:
             parts.append(f"scope={self.scope!r}")
         if self.system is not None:

@@ -86,24 +86,24 @@ class Scheduler:
         self._counter += 1
         return run_at, self._counter - 1
 
-    def insert_event(self, event: Event, trigger_time: Union[datetime.datetime, float, datetime.timedelta], category: Optional[str] = None, callback: Optional[Callable[..., Any]] = None, *, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None) -> Tuple[datetime.datetime, int]:
+    def insert_event(self, event: Event, trigger_time: Union[datetime.datetime, float, datetime.timedelta], callback: Optional[Callable[..., Any]] = None, *, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None) -> Tuple[datetime.datetime, int]:
         """Insert a pre-built `Event` into the scheduler.
 
         - `event`: an instance of `Event`.
         - `trigger_time`: either an absolute `datetime.datetime`, a number of seconds
           (float/int) relative to the scheduler's `now`, or a `datetime.timedelta`
           relative to the scheduler's `now`.
-        - `category`: optional label stored on the event.
         - `callback`: optional callable to run when the event fires. If omitted,
           the scheduler will use a no-op handler that returns the `Event`.
+
+        Optional `scope` and `system` can be attached to the event for later
+        filtering when peeking or popping events.
 
         Returns the scheduled run time and an integer id.
         """
         if not isinstance(event, Event):
             raise TypeError("event must be an Event instance")
 
-        if category is not None:
-            event.category = category
         if scope is not None:
             event.scope = scope
         if system is not None:
@@ -133,13 +133,13 @@ class Scheduler:
         self._counter += 1
         return run_at, self._counter - 1
 
-    def pop_event(self, category: Optional[str] = None, *, system: Optional["SystemInstance"] = None, include_descendants: bool = False) -> Optional[Event]:
+    def pop_event(self, scope: Optional["Scope"] = None, *, system: Optional["SystemInstance"] = None, include_descendants: bool = False) -> Optional[Event]:
         """Remove and return the next scheduled Event.
 
-        If `category` is provided, the scheduler searches chronologically for the
-        next event whose `Event.category` matches the value and removes it from
-        the queue. System filtering is also supported. If no matching event exists,
-        returns `None`.
+        If `scope` is provided, the scheduler searches chronologically for the
+        next event whose `Event.scope` equals the provided `scope` and removes
+        it from the queue. System filtering is also supported. If no matching
+        event exists, returns `None`.
         """
         if not self._queue:
             return None
@@ -147,11 +147,11 @@ class Scheduler:
         temp: List[Tuple[datetime.datetime, int, Tuple[Callable[..., Any], Event]]] = []
         found_event: Optional[Event] = None
 
-        # Pop items until we find a matching category/system (or run out).
+        # Pop items until we find a matching scope/system (or run out).
         # Keep others in temp so we can push them back preserving heap order.
         while self._queue:
             run_at, idx, (cb, event) = heappop(self._queue)
-            matches_category = category is None or event.category == category
+            matches_scope = scope is None or event.scope == scope
             matches_system = True
             if system is not None:
                 if include_descendants:
@@ -159,7 +159,7 @@ class Scheduler:
                 else:
                     matches_system = event.system == system
 
-            if matches_category and matches_system:
+            if matches_scope and matches_system:
                 found_event = event
                 break
             temp.append((run_at, idx, (cb, event)))
@@ -170,14 +170,14 @@ class Scheduler:
 
         return found_event
 
-    def pop_event_for_system(self, system: "SystemInstance", category: Optional[str] = None, *, include_descendants: bool = False) -> Optional[Event]:
+    def pop_event_for_system(self, system: "SystemInstance", *, include_descendants: bool = False) -> Optional[Event]:
         """Convenience method: pop next event for a specific `system`.
 
         This searches chronologically for the next event whose `Event.system`
-        equals `system`, optionally also matching `category`. When
-        `include_descendants` is True, descendant systems also match.
+        equals `system`. When `include_descendants` is True, descendant systems
+        also match.
         """
-        return self.pop_event(category=category, system=system, include_descendants=include_descendants)
+        return self.pop_event(system=system, include_descendants=include_descendants)
 
     def step(self) -> Optional[Event]:
         if not self._queue:
@@ -208,14 +208,13 @@ class Scheduler:
         if until is not None and self._time < until:
             self._time = until
 
-    def peek_events(self, category: Optional[str] = None, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None, limit: Optional[int] = None, *, include_descendants: bool = False) -> List[Tuple[datetime.datetime, Event]]:
+    def peek_events(self, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None, limit: Optional[int] = None, *, include_descendants: bool = False) -> List[Tuple[datetime.datetime, Event]]:
         """Look ahead at upcoming events without modifying the queue.
 
         Returns a list of (run_at, Event) tuples in chronological order, optionally filtered
-        by category, scope, or system. If multiple filters are provided, all must match.
+        by scope or system. If multiple filters are provided, all must match.
 
         Args:
-            category: Optional category to filter by.
             scope: Optional Scope object to filter by.
             system: Optional SystemInstance to filter by.
             limit: Optional maximum number of events to return.
@@ -227,8 +226,6 @@ class Scheduler:
         result = []
         for run_at, idx, (cb, event) in self._queue:
             # Check all filters
-            if category is not None and event.category != category:
-                continue
             if scope is not None and event.scope != scope:
                 continue
             if system is not None and event.system != system:

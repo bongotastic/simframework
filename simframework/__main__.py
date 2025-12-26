@@ -6,12 +6,12 @@ try:
     # Prefer absolute import when run as a module
     from simframework.scheduler import Scheduler
     from simframework.event import Event
-    from simframework.scope import Domain
+    from simframework.scope import Domain, Scope
 except ImportError:
     # Fallback for running in environments where absolute imports fail
     from .scheduler import Scheduler
     from .event import Event
-    from .scope import Domain
+    from .scope import Domain, Scope
 
 
 def main():
@@ -24,10 +24,10 @@ def main():
     if domain_yaml.exists():
         domain = Domain.from_yaml(str(domain_yaml))
         top_scopes = domain.scopes_at_depth(0)
-        categories = [s.name for s in top_scopes] if top_scopes else ["weather", "communication", "personnel"]
+        categories = top_scopes if top_scopes else [Scope("weather"), Scope("communication"), Scope("personnel")]
     else:
         domain = None
-        categories = ["weather", "communication", "personnel"]
+        categories = [Scope("weather"), Scope("communication"), Scope("personnel")]
 
     # Generate 40 events spread across 1-120 minutes in the future
     five_min_delta = datetime.timedelta(minutes=5)
@@ -35,7 +35,7 @@ def main():
     for i in range(1, 41):
         # Spread events across 1-120 minutes (i * 3 minutes each)
         trigger_minute = i * 3
-        category = categories[i % len(categories)]
+        assigned_scope = categories[i % len(categories)]
 
         # Every 5th event has a fixed 5-minute timespan; others vary
         if i % 5 == 0:
@@ -47,20 +47,20 @@ def main():
             data={
                 "event_id": i,
                 "trigger_minute": trigger_minute,
-                "category": category,
             },
             timespan=timespan,
         )
 
         # Attach the scope object from the domain when available
-        scope_obj = None
         if domain is not None:
-            scope_obj = domain.get_scope(category)
+            scope_obj = assigned_scope
+        else:
+            # assigned_scope may be a plain Scope objects in the no-domain case
+            scope_obj = assigned_scope
 
         scheduler.insert_event(
             event,
             trigger_time=trigger_minute * 60,  # Convert minutes to seconds
-            category=category,
             scope=scope_obj,
         )
 
@@ -77,12 +77,13 @@ def main():
     if domain is not None and domain.get_scope("personnel") is not None:
         people_label = "personnel"
 
-    personnel_events = scheduler.peek_events(category=people_label)
-    for event_num, event in enumerate(personnel_events, start=1):
+    personnel_events = scheduler.peek_events(scope=domain.get_scope(people_label) if domain is not None else None)
+    for event_num, (run_at, event) in enumerate(personnel_events, start=1):
+        elapsed_minutes = (run_at - start_time).total_seconds() / 60
         scope_path = event.scope.full_path() if getattr(event, "scope", None) is not None else "-"
         print(
-            f"Event #{event_num:2d} | "
-            f"Category: {event.category:12s} | Scope: {scope_path:30s} | Timespan: {event.timespan} | "
+            f"Event #{event_num:2d} | Timestamp: {run_at} | Elapsed: {elapsed_minutes:6.1f} min | "
+            f"Scope: {event.scope.name if getattr(event, 'scope', None) is not None else '-':12s} | ScopePath: {scope_path:30s} | Timespan: {event.timespan} | "
             f"ID: {event.data['event_id']}")
 
     print(f"\nPhase 1 complete: {len(personnel_events)} '{people_label}' events found in queue (not removed)")
@@ -100,8 +101,8 @@ def main():
         elapsed_minutes = (scheduler.now - start_time).total_seconds() / 60
         scope_path = event.scope.full_path() if getattr(event, "scope", None) is not None else "-"
         print(
-            f"Event #{event_num:2d} | Elapsed: {elapsed_minutes:6.1f} min | "
-            f"Category: {event.category:12s} | Scope: {scope_path:30s} | Timespan: {event.timespan} | "
+            f"Event #{event_num:2d} | Timestamp: {scheduler.now} | Elapsed: {elapsed_minutes:6.1f} min | "
+            f"Scope: {event.scope.name if getattr(event, 'scope', None) is not None else '-':12s} | ScopePath: {scope_path:30s} | Timespan: {event.timespan} | "
             f"ID: {event.data['event_id']}")
 
     print("=" * 90)

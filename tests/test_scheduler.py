@@ -128,9 +128,9 @@ class TestInsertEventMethod:
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
         event = Event(data={"test": 1})
-        run_at, idx = s.insert_event(event, trigger_time=10.0, category="test")
+        run_at, idx = s.insert_event(event, trigger_time=10.0)
         assert run_at == start + timedelta(seconds=10.0)
-        assert event.category == "test"
+        assert event.scope is None
         assert idx == 0
 
     def test_insert_event_absolute_datetime(self):
@@ -151,12 +151,14 @@ class TestInsertEventMethod:
         run_at, idx = s.insert_event(event, trigger_time=delay)
         assert run_at == start + delay
 
-    def test_insert_event_with_category(self):
-        """insert_event should set event category."""
+    def test_insert_event_with_scope(self):
+        """insert_event should attach a Scope to the event when provided."""
         s = Scheduler()
+        from simframework.scope import Scope
         event = Event(data={"test": 4})
-        s.insert_event(event, trigger_time=5.0, category="growth")
-        assert event.category == "growth"
+        scope = Scope("growth")
+        s.insert_event(event, trigger_time=5.0, scope=scope)
+        assert event.scope == scope
 
     def test_insert_event_invalid_event_type(self):
         """insert_event should reject non-Event objects."""
@@ -199,38 +201,42 @@ class TestPopEventMethod:
         result = s.pop_event()
         assert result is None
 
-    def test_pop_event_no_category_filter(self):
-        """pop_event with no category should return earliest event."""
+    def test_pop_event_no_scope_filter(self):
+        """pop_event with no scope should return earliest event."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
         event1 = Event(data={"id": 1})
         event2 = Event(data={"id": 2})
         event3 = Event(data={"id": 3})
-        s.insert_event(event3, trigger_time=3.0, category="cat1")
-        s.insert_event(event1, trigger_time=1.0, category="cat1")
-        s.insert_event(event2, trigger_time=2.0, category="cat1")
+        s.insert_event(event3, trigger_time=3.0)
+        s.insert_event(event1, trigger_time=1.0)
+        s.insert_event(event2, trigger_time=2.0)
         popped = s.pop_event()
         assert popped.data["id"] == 1
 
-    def test_pop_event_with_category_filter(self):
-        """pop_event with category should return earliest event in that category."""
+    def test_pop_event_with_scope_filter(self):
+        """pop_event with scope should return earliest event in that scope."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
+        from simframework.scope import Scope
+        scope_weather = Scope("weather")
+        scope_growth = Scope("growth")
         event1 = Event(data={"id": 1})
         event2 = Event(data={"id": 2})
         event3 = Event(data={"id": 3})
-        s.insert_event(event1, trigger_time=1.0, category="weather")
-        s.insert_event(event2, trigger_time=2.0, category="growth")
-        s.insert_event(event3, trigger_time=3.0, category="weather")
-        popped = s.pop_event(category="weather")
+        s.insert_event(event1, trigger_time=1.0, scope=scope_weather)
+        s.insert_event(event2, trigger_time=2.0, scope=scope_growth)
+        s.insert_event(event3, trigger_time=3.0, scope=scope_weather)
+        popped = s.pop_event(scope=scope_weather)
         assert popped.data["id"] == 1
 
-    def test_pop_event_category_not_found(self):
-        """pop_event with non-matching category should return None."""
+    def test_pop_event_scope_not_found(self):
+        """pop_event with non-matching scope should return None."""
         s = Scheduler()
+        from simframework.scope import Scope
         event = Event(data={"id": 1})
-        s.insert_event(event, trigger_time=1.0, category="weather")
-        popped = s.pop_event(category="nonexistent")
+        s.insert_event(event, trigger_time=1.0, scope=Scope("weather"))
+        popped = s.pop_event(scope=Scope("nonexistent"))
         assert popped is None
 
     def test_pop_event_removes_from_queue(self):
@@ -253,21 +259,24 @@ class TestPopEventMethod:
         """pop_event should maintain chronological order after partial removal."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
+        from simframework.scope import Scope
+        cat1 = Scope("cat1")
+        cat2 = Scope("cat2")
         event1 = Event(data={"id": 1})
         event2 = Event(data={"id": 2})
         event3 = Event(data={"id": 3})
         event4 = Event(data={"id": 4})
-        s.insert_event(event1, trigger_time=1.0, category="cat1")
-        s.insert_event(event2, trigger_time=2.0, category="cat2")
-        s.insert_event(event3, trigger_time=3.0, category="cat1")
-        s.insert_event(event4, trigger_time=4.0, category="cat2")
+        s.insert_event(event1, trigger_time=1.0, scope=cat1)
+        s.insert_event(event2, trigger_time=2.0, scope=cat2)
+        s.insert_event(event3, trigger_time=3.0, scope=cat1)
+        s.insert_event(event4, trigger_time=4.0, scope=cat2)
         # Pop cat1 events, leaving cat2 intact
-        popped = s.pop_event(category="cat1")
+        popped = s.pop_event(scope=cat1)
         assert popped.data["id"] == 1
         # cat2 events should still be in order
-        popped = s.pop_event(category="cat2")
+        popped = s.pop_event(scope=cat2)
         assert popped.data["id"] == 2
-        popped = s.pop_event(category="cat2")
+        popped = s.pop_event(scope=cat2)
         assert popped.data["id"] == 4
 
 
