@@ -1,0 +1,28 @@
+{
+    // Debug configurations for simframework
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug simframework (module)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "simframework",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Python: Current File (script)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        }
+    ]
+}

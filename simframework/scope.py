@@ -1,0 +1,132 @@
+"""Scope and Domain classes for hierarchical categorization in simulations.
+
+A Scope represents a category in a hierarchy with optional metadata.
+A Domain is a collection of related Scopes that define the structure
+for a particular simulation framework.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Set
+
+
+@dataclass
+class Scope:
+    """A scope representing a category in a taxonomy.
+
+    A scope can have a parent scope, creating a hierarchy. Scopes can also
+    carry metadata via properties for domain-specific information.
+    """
+
+    name: str
+    parent: Optional[Scope] = None
+    properties: Dict[str, Any] = field(default_factory=dict)
+
+    def full_path(self) -> str:
+        """Return the full hierarchical path of this scope (e.g., 'biology/organism/growth')."""
+        if self.parent is None:
+            return self.name
+        return f"{self.parent.full_path()}/{self.name}"
+
+    def ancestors(self) -> List[Scope]:
+        """Return list of ancestor scopes, from root to parent."""
+        if self.parent is None:
+            return []
+        return self.parent.ancestors() + [self.parent]
+
+    def is_ancestor_of(self, other: Scope) -> bool:
+        """Check if this scope is an ancestor of another scope."""
+        current = other.parent
+        while current is not None:
+            if current is self:
+                return True
+            current = current.parent
+        return False
+
+    def depth(self) -> int:
+        """Return the depth of this scope in the hierarchy (root = 0)."""
+        if self.parent is None:
+            return 0
+        return 1 + self.parent.depth()
+
+    def __repr__(self) -> str:
+        return f"Scope(path='{self.full_path()}', properties={self.properties})"
+
+    def __eq__(self, other: Any) -> bool:
+        """Two scopes are equal if they have the same full path."""
+        if not isinstance(other, Scope):
+            return False
+        return self.full_path() == other.full_path()
+
+    def __hash__(self) -> int:
+        """Hash based on full path for use in sets/dicts."""
+        return hash(self.full_path())
+
+
+class Domain:
+    """A domain defines all scopes for a particular simulation framework.
+
+    A domain acts as a registry of scopes, allowing structured access,
+    filtering, and querying by hierarchy.
+    """
+
+    def __init__(self, name: str):
+        """Initialize a domain with a name.
+
+        Args:
+            name: The name of this domain (e.g., 'EcologicalSimulation').
+        """
+        self.name = name
+        self._scopes: Dict[str, Scope] = {}
+
+    def register_scope(self, scope: Scope) -> None:
+        """Register a scope in this domain.
+
+        Args:
+            scope: The Scope to register.
+
+        Raises:
+            ValueError: If a scope with the same full path is already registered.
+        """
+        path = scope.full_path()
+        if path in self._scopes:
+            raise ValueError(f"Scope '{path}' is already registered in domain '{self.name}'")
+        self._scopes[path] = scope
+
+    def get_scope(self, full_path: str) -> Optional[Scope]:
+        """Retrieve a scope by its full hierarchical path.
+
+        Args:
+            full_path: The full path (e.g., 'biology/organism/growth').
+
+        Returns:
+            The Scope if found, None otherwise.
+        """
+        return self._scopes.get(full_path)
+
+    def get_scopes_by_ancestor(self, ancestor: Scope) -> List[Scope]:
+        """Get all scopes that have a specific ancestor (or are equal to it).
+
+        Args:
+            ancestor: The ancestor Scope to filter by.
+
+        Returns:
+            A list of Scopes that have the ancestor in their hierarchy.
+        """
+        result = [ancestor]
+        for scope in self._scopes.values():
+            if ancestor.is_ancestor_of(scope):
+                result.append(scope)
+        return result
+
+    def list_all_scopes(self) -> List[Scope]:
+        """Return all registered scopes in this domain."""
+        return list(self._scopes.values())
+
+    def scopes_at_depth(self, depth: int) -> List[Scope]:
+        """Return all scopes at a specific depth in the hierarchy."""
+        return [scope for scope in self._scopes.values() if scope.depth() == depth]
+
+    def __repr__(self) -> str:
+        scope_count = len(self._scopes)
+        return f"Domain(name='{self.name}', scopes={scope_count})"
