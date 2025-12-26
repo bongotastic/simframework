@@ -62,3 +62,37 @@ scopes:
   - path: personnel/shift
     properties:
       description: Shift scheduling and staffing events
+
+systems:
+  - name: StationTypeA
+    properties:
+      capacity: 6
+      description: A modular station with multiple functional modules
+    children:
+      - name: living_habitat
+        properties:
+          capacity: 4
+          description: Crew living quarters and life support interfaces
+      - name: life_support
+        properties:
+          redundant: true
+          description: Environmental control and life support system
+      - name: engineering
+        properties:
+          description: Power, propulsion, and structural systems
+      - name: science
+        properties:
+          description: Laboratory and instrumentation suite
+
+agents:
+  - name: astronaut
+    properties:
+      training_level: mission
+      role: crew
+    children:
+      - name: body
+        properties:
+          species: human
+      - name: gear
+        properties:
+          inventory: ["suit", "toolkit", "comms"]
