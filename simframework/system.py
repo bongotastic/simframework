@@ -40,10 +40,15 @@ class SystemTemplate:
     name: str
     properties: Dict[str, PropertySpec] = field(default_factory=dict)
     children: List["SystemTemplate"] = field(default_factory=list)
+    labels: List[str] = field(default_factory=list)
+    is_location: bool = False
 
     def __post_init__(self) -> None:
         # Normalize property definitions for consistent access
         self.properties = {k: PropertySpec.from_value(v) for k, v in (self.properties or {}).items()}
+        # Normalize labels to list of strings
+        self.labels = list(self.labels or [])
+        self.is_location = bool(self.is_location)
 
     def add_child(self, child: "SystemTemplate") -> None:
         """Attach a child template to this template."""
@@ -77,6 +82,8 @@ class SystemTemplate:
             id=instance_id or f"{self.name}-inst",
             parent=parent,
             overrides=combined_overrides,
+            labels=list(self.labels),
+            is_location=self.is_location,
         )
         if include_children:
             for child_template in self.children:
@@ -94,6 +101,8 @@ class SystemInstance:
     parent: Optional["SystemInstance"] = None
     overrides: Dict[str, Any] = field(default_factory=dict)
     children: List["SystemInstance"] = field(default_factory=list)
+    labels: List[str] = field(default_factory=list)
+    is_location: bool = False
 
     def add_child(self, child: "SystemInstance") -> None:
         """Attach an existing child instance."""
@@ -278,6 +287,8 @@ class AgentTemplate(SystemTemplate):
             id=instance_id or f"{self.name}-inst",
             parent=parent,
             overrides=combined_overrides,
+            labels=list(self.labels),
+            is_location=self.is_location,
         )
         if include_children:
             for child_template in self.children:

@@ -70,22 +70,31 @@ systems:
       description: A modular station with multiple functional modules
     children:
       - name: living_habitat
+        is_location: true
+        labels: ["module", "habitat"]
         properties:
           capacity: 4
           description: Crew living quarters and life support interfaces
       - name: life_support
+        is_location: true
+        labels: ["module", "life_support"]
         properties:
           redundant: true
           description: Environmental control and life support system
       - name: engineering
+        is_location: true
+        labels: ["module", "engineering"]
         properties:
           description: Power, propulsion, and structural systems
       - name: science
+        is_location: true
+        labels: ["module", "science"]
         properties:
           description: Laboratory and instrumentation suite
 
 agents:
   - name: astronaut
+    labels: ["crew", "human"]
     properties:
       training_level: mission
       role: crew

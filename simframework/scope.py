@@ -233,11 +233,13 @@ class Domain:
                 if name is None:
                     raise ValueError("template entry missing 'name' or 'id'")
                 props = entry.get("properties", {}) or {}
+                labels = entry.get("labels", []) or []
+                is_location = bool(entry.get("is_location", False))
                 children = []
                 for child in entry.get("children", []) or []:
                     child_is_agent = isinstance(child, dict) and child.get("type") == "agent"
                     children.append(_build_template(child, agent=child_is_agent))
-                tmpl = tmpl_cls(name, properties=props)
+                tmpl = tmpl_cls(name, properties=props, labels=labels, is_location=is_location)
                 for c in children:
                     tmpl.add_child(c)
                 return tmpl
