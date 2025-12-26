@@ -78,6 +78,16 @@ class Domain:
         """
         self.name = name
         self._scopes: Dict[str, Scope] = {}
+        # Template registries for systems and agents (populated from YAML)
+        from .system import SystemTemplate, AgentTemplate  # local import to avoid top-level cycle
+        self.system_templates: Dict[str, SystemTemplate] = {}
+        self.agent_templates: Dict[str, AgentTemplate] = {}
+
+    def get_system_template(self, name: str) -> Optional["SystemTemplate"]:
+        return self.system_templates.get(name)
+
+    def get_agent_template(self, name: str) -> Optional["AgentTemplate"]:
+        return self.agent_templates.get(name)
 
     def register_scope(self, scope: Scope) -> None:
         """Register a scope in this domain.
@@ -194,6 +204,7 @@ class Domain:
                 domain = cls(name or "domain")
             # If multiple files provide a name, we keep the first non-empty name.
 
+            # --- parse scopes as before ---
             for entry in data.get("scopes", []) or []:
                 path = entry.get("path") or entry.get("name")
                 if not path:
@@ -211,6 +222,35 @@ class Domain:
                         parent = scope
                     else:
                         parent = existing
+
+            # --- new: parse system and agent templates ---
+            # Import templates here to avoid circular imports at module load time
+            from .system import SystemTemplate, AgentTemplate
+
+            def _build_template(entry: dict, agent: bool = False):
+                tmpl_cls = AgentTemplate if agent else SystemTemplate
+                name = entry.get("name") or entry.get("id")
+                if name is None:
+                    raise ValueError("template entry missing 'name' or 'id'")
+                props = entry.get("properties", {}) or {}
+                children = []
+                for child in entry.get("children", []) or []:
+                    child_is_agent = isinstance(child, dict) and child.get("type") == "agent"
+                    children.append(_build_template(child, agent=child_is_agent))
+                tmpl = tmpl_cls(name, properties=props)
+                for c in children:
+                    tmpl.add_child(c)
+                return tmpl
+
+            # Systems
+            for entry in data.get("systems", []) or []:
+                tmpl = _build_template(entry, agent=False)
+                domain.system_templates[tmpl.name] = tmpl
+
+            # Agents
+            for entry in data.get("agents", []) or []:
+                tmpl = _build_template(entry, agent=True)
+                domain.agent_templates[tmpl.name] = tmpl
 
         if domain is None:
             # No files matched; return an empty domain with the directory name
