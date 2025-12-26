@@ -1,0 +1,64 @@
+name: LunarStationDomain
+scopes:
+  - path: weather
+    properties:
+      description: Environmental conditions affecting the station
+  - path: weather/radiation
+    properties:
+      description: Radiation events and monitoring
+  - path: weather/radiation/solar_flare
+    properties:
+      description: High-energy solar particle events
+      severity: high
+  - path: weather/radiation/cosmic_ray_spike
+    properties:
+      description: Short-term increases in cosmic ray flux
+      severity: medium
+  - path: weather/dust
+    properties:
+      description: Lunar dust disturbances impacting operations
+  - path: weather/dust/high_density
+    properties:
+      description: High-density dust storm near the habitat
+      severity: medium
+  - path: weather/temperature
+    properties:
+      description: Temperature excursions affecting equipment
+
+  - path: communication
+    properties:
+      description: Communication subsystem events
+  - path: communication/uplink
+    properties:
+      description: Uplink (ground->station) issues
+  - path: communication/downlink
+    properties:
+      description: Downlink (station->ground) issues
+  - path: communication/relay
+    properties:
+      description: Relay and antenna subsystem problems
+  - path: communication/relay/antenna_failure
+    properties:
+      description: Mechanical or electronic antenna failure
+      severity: high
+
+  - path: personnel
+    properties:
+      description: Human-related events and statuses
+  - path: personnel/eva
+    properties:
+      description: Extravehicular activities and incidents
+  - path: personnel/eva/suit_breach
+    properties:
+      description: Suit integrity failure during EVA
+      severity: critical
+  - path: personnel/health
+    properties:
+      description: Medical and health-related events
+  - path: personnel/health/medical_emergency
+    properties:
+      description: Acute medical emergencies requiring intervention
+      severity: critical
+  - path: personnel/shift
+    properties:
+      description: Shift scheduling and staffing events
