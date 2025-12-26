@@ -68,33 +68,28 @@ def main():
     print(f"Total events scheduled: 40 (spread across 1-120 minutes)")
     print("=" * 90)
 
-    # Phase 1: Process only people/personnel events
-    print("PHASE 1: Processing only 'people' events")
+    # Phase 1: Peek ahead at personnel events (without removing them)
+    print("PHASE 1: Upcoming 'personnel' events (preview)")
     print("-" * 90)
-    event_num = 0
 
     # If domain uses different naming, select personnel/people mapping
     people_label = "people"
     if domain is not None and domain.get_scope("personnel") is not None:
         people_label = "personnel"
 
-    while True:
-        event = scheduler.pop_event(category=people_label)
-        if event is None:
-            break
-        event_num += 1
-        elapsed_minutes = (scheduler.now - start_time).total_seconds() / 60
+    personnel_events = scheduler.peek_events(category=people_label)
+    for event_num, event in enumerate(personnel_events, start=1):
         scope_path = event.scope.full_path() if getattr(event, "scope", None) is not None else "-"
         print(
-            f"Event #{event_num:2d} | Elapsed: {elapsed_minutes:6.1f} min | "
+            f"Event #{event_num:2d} | "
             f"Category: {event.category:12s} | Scope: {scope_path:30s} | Timespan: {event.timespan} | "
             f"ID: {event.data['event_id']}")
 
-    print(f"\nPhase 1 complete: {event_num} '{people_label}' events processed")
+    print(f"\nPhase 1 complete: {len(personnel_events)} '{people_label}' events found in queue (not removed)")
     print("=" * 90)
 
-    # Phase 2: Process all remaining events
-    print("\nPHASE 2: Processing all remaining events")
+    # Phase 2: Process all events normally (in chronological order)
+    print("\nPHASE 2: Processing all events chronologically")
     print("-" * 90)
     event_num = 0
     while True:
