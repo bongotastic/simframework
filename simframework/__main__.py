@@ -1,28 +1,41 @@
-"""Demo: instantiate scheduler, populate with events from three categories, and process."""
+"""Demo: instantiate scheduler, populate with events from a domain YAML, and process."""
 import datetime
+from pathlib import Path
 
 try:
     # Prefer absolute import when run as a module
     from simframework.scheduler import Scheduler
     from simframework.event import Event
+    from simframework.scope import Domain
 except ImportError:
     # Fallback for running in environments where absolute imports fail
     from .scheduler import Scheduler
     from .event import Event
+    from .scope import Domain
 
 
 def main():
     start_time = datetime.datetime(2025, 1, 1, 0, 0, 0)
     scheduler = Scheduler(start_time=start_time)
 
+    # Attempt to load a domain definition for the simulation (LunarStation)
+    pkg_root = Path(__file__).resolve().parents[1]
+    domain_yaml = pkg_root / "simulations" / "LunarStation" / "domain.yaml"
+    if domain_yaml.exists():
+        domain = Domain.from_yaml(str(domain_yaml))
+        top_scopes = domain.scopes_at_depth(0)
+        categories = [s.name for s in top_scopes] if top_scopes else ["weather", "communication", "personnel"]
+    else:
+        domain = None
+        categories = ["weather", "communication", "personnel"]
+
     # Generate 40 events spread across 1-120 minutes in the future
-    categories = ["growth", "weather", "people"]
     five_min_delta = datetime.timedelta(minutes=5)
 
     for i in range(1, 41):
         # Spread events across 1-120 minutes (i * 3 minutes each)
         trigger_minute = i * 3
-        category = categories[i % 3]
+        category = categories[i % len(categories)]
 
         # Every 5th event has a fixed 5-minute timespan; others vary
         if i % 5 == 0:
@@ -39,35 +52,49 @@ def main():
             timespan=timespan,
         )
 
+        # Attach the scope object from the domain when available
+        scope_obj = None
+        if domain is not None:
+            scope_obj = domain.get_scope(category)
+
         scheduler.insert_event(
             event,
             trigger_time=trigger_minute * 60,  # Convert minutes to seconds
             category=category,
+            scope=scope_obj,
         )
 
     print(f"Starting simulation at {scheduler.now}")
     print(f"Total events scheduled: 40 (spread across 1-120 minutes)")
     print("=" * 90)
 
-    # Phase 1: Process only "people" events
+    # Phase 1: Process only people/personnel events
     print("PHASE 1: Processing only 'people' events")
     print("-" * 90)
     event_num = 0
+
+    # If domain uses different naming, select personnel/people mapping
+    people_label = "people"
+    if domain is not None and domain.get_scope("personnel") is not None:
+        people_label = "personnel"
+
     while True:
-        event = scheduler.pop_event(category="people")
+        event = scheduler.pop_event(category=people_label)
         if event is None:
             break
         event_num += 1
         elapsed_minutes = (scheduler.now - start_time).total_seconds() / 60
-        print(f"Event #{event_num:2d} | Elapsed: {elapsed_minutes:6.1f} min | "
-              f"Category: {event.category:8s} | Timespan: {event.timespan} | "
-              f"ID: {event.data['event_id']}")
+        scope_path = event.scope.full_path() if getattr(event, "scope", None) is not None else "-"
+        print(
+            f"Event #{event_num:2d} | Elapsed: {elapsed_minutes:6.1f} min | "
+            f"Category: {event.category:12s} | Scope: {scope_path:30s} | Timespan: {event.timespan} | "
+            f"ID: {event.data['event_id']}")
 
-    print(f"\nPhase 1 complete: {event_num} 'people' events processed")
+    print(f"\nPhase 1 complete: {event_num} '{people_label}' events processed")
     print("=" * 90)
 
     # Phase 2: Process all remaining events
-    print("\nPHASE 2: Processing all remaining events (growth + weather)")
+    print("\nPHASE 2: Processing all remaining events")
     print("-" * 90)
     event_num = 0
     while True:
@@ -76,9 +103,11 @@ def main():
             break
         event_num += 1
         elapsed_minutes = (scheduler.now - start_time).total_seconds() / 60
-        print(f"Event #{event_num:2d} | Elapsed: {elapsed_minutes:6.1f} min | "
-              f"Category: {event.category:8s} | Timespan: {event.timespan} | "
-              f"ID: {event.data['event_id']}")
+        scope_path = event.scope.full_path() if getattr(event, "scope", None) is not None else "-"
+        print(
+            f"Event #{event_num:2d} | Elapsed: {elapsed_minutes:6.1f} min | "
+            f"Category: {event.category:12s} | Scope: {scope_path:30s} | Timespan: {event.timespan} | "
+            f"ID: {event.data['event_id']}")
 
     print("=" * 90)
     print(f"Simulation ended at {scheduler.now}")
