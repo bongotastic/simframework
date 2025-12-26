@@ -156,17 +156,33 @@ class Domain:
 
         from pathlib import Path
         p = Path(filepath)
-        if not p.exists():
-            raise FileNotFoundError(f"Domain YAML path not found: {filepath}")
 
-        files = []
-        if p.is_dir():
-            # Collect YAML files sorted for deterministic loading order
-            for child in sorted(p.iterdir()):
-                if child.suffix.lower() in (".yml", ".yaml") and child.is_file():
-                    files.append(child)
+        # Support glob patterns (e.g., 'simulations/**/*.yaml')
+        pattern_chars = set("*?[]")
+        is_glob = any((c in filepath) for c in pattern_chars) or "**" in filepath
+
+        files: List[Path] = []
+        if is_glob:
+            # Use glob.glob which supports absolute and recursive patterns
+            import glob as _glob
+            matched = sorted(_glob.glob(filepath, recursive=True))
+            for m in matched:
+                f = Path(m)
+                if f.suffix.lower() in (".yml", ".yaml") and f.is_file():
+                    files.append(f)
+            if not files:
+                raise FileNotFoundError(f"No YAML files matched glob: {filepath}")
         else:
-            files = [p]
+            if not p.exists():
+                raise FileNotFoundError(f"Domain YAML path not found: {filepath}")
+
+            if p.is_dir():
+                # Collect YAML files sorted for deterministic loading order
+                for child in sorted(p.iterdir()):
+                    if child.suffix.lower() in (".yml", ".yaml") and child.is_file():
+                        files.append(child)
+            else:
+                files = [p]
 
         domain = None
         for f in files:

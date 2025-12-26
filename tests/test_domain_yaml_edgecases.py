@@ -59,3 +59,28 @@ def test_from_yaml_empty_scopes_returns_domain(tmp_path):
     domain = Domain.from_yaml(str(f))
     assert domain.name == "EmptyDomain"
     assert domain.list_all_scopes() == []
+
+
+def test_from_yaml_glob_pattern_loading(tmp_path):
+    # Create multiple YAML files in a nested structure
+    d = tmp_path / "parts"
+    d.mkdir()
+    (d / "a.yaml").write_text("""
+scopes:
+  - path: foo/a
+    properties:
+      v: 1
+""")
+    sub = d / "sub"
+    sub.mkdir()
+    (sub / "b.yaml").write_text("""
+scopes:
+  - path: foo/b
+    properties:
+      v: 2
+""")
+
+    pattern = str(tmp_path / "parts" / "**" / "*.yaml")
+    domain = Domain.from_yaml(pattern)
+    assert domain.get_scope("foo/a") is not None
+    assert domain.get_scope("foo/b").properties.get("v") == 2
