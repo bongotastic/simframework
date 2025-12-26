@@ -184,3 +184,49 @@ class SystemInstance:
         if not isinstance(other, SystemInstance):
             return False
         return (self.template.name, self.id) == (other.template.name, other.id)
+
+
+@dataclass
+class Agent(SystemInstance):
+    """Agent: a specialized SystemInstance capable of perception, goals, and tasks.
+
+    Agents are primarily runtime actors that can perceive `Entity` objects
+    via the `SimulationEngine`, interact with other systems (by scheduling
+    events on their behalf), and maintain a list of goals and a current task
+    (represented as a `Scope`).
+    """
+
+    goals: List[str] = field(default_factory=list)
+    current_task: Optional["Scope"] = None
+
+    def add_goal(self, goal: str) -> None:
+        self.goals.append(goal)
+
+    def pop_goal(self) -> Optional[str]:
+        if not self.goals:
+            return None
+        return self.goals.pop(0)
+
+    def assign_task(self, task: "Scope") -> None:
+        self.current_task = task
+
+    def perceive_entities(self, engine: "SimulationEngine", predicate: Optional[callable] = None):
+        """Return entities visible to this agent.
+
+        If `predicate` is provided it will be applied to each `Entity` and
+        only those for which it returns True will be returned. By default all
+        registered entities are returned.
+        """
+        # Import locally to avoid circular imports at module import time
+        from .entity import Entity  # type: ignore
+        visible = []
+        for ent in engine.entities.values():
+            if not isinstance(ent, Entity):
+                continue
+            if predicate is None or predicate(ent):
+                visible.append(ent)
+        return visible
+
+    def interact_with_system(self, engine: "SimulationEngine", system_id: str, delay: float, callback, *args, **kwargs):
+        """Convenience wrapper allowing an agent to schedule work on a system."""
+        return engine.schedule_for_system(system_id, delay, callback, *args, **kwargs)
