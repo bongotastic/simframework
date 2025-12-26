@@ -296,12 +296,14 @@ class TestStepAndRunMethods:
         s.step()
         assert results == ["test_arg"]
 
-    def test_step_returns_callback_result(self):
-        """step should return the callback's return value."""
+    def test_step_returns_event(self):
+        """step should return the Event object."""
         s = Scheduler()
-        s.schedule(1.0, lambda: "result_value")
+        e = Event(data={"id": 1})
+        s.insert_event(e, trigger_time=1.0)
         result = s.step()
-        assert result == "result_value"
+        assert result == e
+        assert result.data["id"] == 1
 
     def test_step_multiple_calls(self):
         """Multiple step calls should process events in order."""

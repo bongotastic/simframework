@@ -133,12 +133,13 @@ class Scheduler:
         self._counter += 1
         return run_at, self._counter - 1
 
-    def pop_event(self, category: Optional[str] = None) -> Optional[Event]:
+    def pop_event(self, category: Optional[str] = None, *, system: Optional["SystemInstance"] = None, include_descendants: bool = False) -> Optional[Event]:
         """Remove and return the next scheduled Event.
 
         If `category` is provided, the scheduler searches chronologically for the
         next event whose `Event.category` matches the value and removes it from
-        the queue. If no matching event exists, returns `None`.
+        the queue. System filtering is also supported. If no matching event exists,
+        returns `None`.
         """
         if not self._queue:
             return None
@@ -151,14 +152,12 @@ class Scheduler:
         while self._queue:
             run_at, idx, (cb, event) = heappop(self._queue)
             matches_category = category is None or event.category == category
-            # system filter may be provided via kwargs; callers can extend to
-            # support scope filtering similarly in future.
             matches_system = True
-            # If caller passed a 'system' object via temporary attribute in
-            # the provided category parameter (deprecated), allow matching.
-            # For clarity, prefer an explicit system-aware pop API in future.
-            if hasattr(self, "_pop_system_filter") and self._pop_system_filter is not None:
-                matches_system = event.system == self._pop_system_filter
+            if system is not None:
+                if include_descendants:
+                    matches_system = _is_system_or_descendant(event.system, system)
+                else:
+                    matches_system = event.system == system
 
             if matches_category and matches_system:
                 found_event = event
@@ -169,33 +168,27 @@ class Scheduler:
         for item in temp:
             heappush(self._queue, item)
 
-        # Clear any temporary system filter state if set
-        if hasattr(self, "_pop_system_filter"):
-            self._pop_system_filter = None
-
         return found_event
 
-    def pop_event_for_system(self, system: "SystemInstance", category: Optional[str] = None) -> Optional[Event]:
+    def pop_event_for_system(self, system: "SystemInstance", category: Optional[str] = None, *, include_descendants: bool = False) -> Optional[Event]:
         """Convenience method: pop next event for a specific `system`.
 
         This searches chronologically for the next event whose `Event.system`
-        equals `system`, optionally also matching `category`.
+        equals `system`, optionally also matching `category`. When
+        `include_descendants` is True, descendant systems also match.
         """
-        # Set a temporary filter checked by `pop_event` to avoid duplicating
-        # the search logic. This is safe for single-threaded synchronous use.
-        self._pop_system_filter = system
-        return self.pop_event(category=category)
+        return self.pop_event(category=category, system=system, include_descendants=include_descendants)
 
-    def step(self) -> Optional[Any]:
+    def step(self) -> Optional[Event]:
         if not self._queue:
             return None
         run_at, _idx, (callback, event) = heappop(self._queue)
         self._time = run_at
-        # Call the callback with args/kwargs stored inside Event.data for
-        # backwards compatibility with previous API usage.
+        # Call the callback with args/kwargs for side effects
         ev_args = event.data.get("args", ())
         ev_kwargs = event.data.get("kwargs", {})
-        return callback(*ev_args, **ev_kwargs)
+        callback(*ev_args, **ev_kwargs)
+        return event
 
     def run(self, until: Optional[datetime.datetime] = None) -> None:
         """Run events until queue empty or until the `until` datetime.
@@ -215,10 +208,10 @@ class Scheduler:
         if until is not None and self._time < until:
             self._time = until
 
-    def peek_events(self, category: Optional[str] = None, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None, limit: Optional[int] = None) -> List[Event]:
+    def peek_events(self, category: Optional[str] = None, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None, limit: Optional[int] = None, *, include_descendants: bool = False) -> List[Tuple[datetime.datetime, Event]]:
         """Look ahead at upcoming events without modifying the queue.
 
-        Returns a list of Event objects in chronological order, optionally filtered
+        Returns a list of (run_at, Event) tuples in chronological order, optionally filtered
         by category, scope, or system. If multiple filters are provided, all must match.
 
         Args:
@@ -226,9 +219,10 @@ class Scheduler:
             scope: Optional Scope object to filter by.
             system: Optional SystemInstance to filter by.
             limit: Optional maximum number of events to return.
+            include_descendants: When True, descendant systems of `system` also match.
 
         Returns:
-            A list of Event objects matching the filters (or empty if none match).
+            A list of (datetime, Event) tuples matching the filters (or empty if none match).
         """
         result = []
         for run_at, idx, (cb, event) in self._queue:
@@ -238,12 +232,25 @@ class Scheduler:
             if scope is not None and event.scope != scope:
                 continue
             if system is not None and event.system != system:
-                continue
+                if not include_descendants or not _is_system_or_descendant(event.system, system):
+                    continue
 
-            result.append(event)
+            result.append((run_at, event))
 
             # Stop if limit reached
             if limit is not None and len(result) >= limit:
                 break
 
         return result
+
+
+def _is_system_or_descendant(candidate: Optional["SystemInstance"], target: "SystemInstance") -> bool:
+    """Return True if candidate is target or a descendant of target."""
+    if candidate is None:
+        return False
+    current = candidate
+    while current is not None:
+        if current == target:
+            return True
+        current = current.parent  # type: ignore[attr-defined]
+    return False
