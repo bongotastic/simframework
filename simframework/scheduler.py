@@ -214,3 +214,36 @@ class Scheduler:
 
         if until is not None and self._time < until:
             self._time = until
+
+    def peek_events(self, category: Optional[str] = None, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None, limit: Optional[int] = None) -> List[Event]:
+        """Look ahead at upcoming events without modifying the queue.
+
+        Returns a list of Event objects in chronological order, optionally filtered
+        by category, scope, or system. If multiple filters are provided, all must match.
+
+        Args:
+            category: Optional category to filter by.
+            scope: Optional Scope object to filter by.
+            system: Optional SystemInstance to filter by.
+            limit: Optional maximum number of events to return.
+
+        Returns:
+            A list of Event objects matching the filters (or empty if none match).
+        """
+        result = []
+        for run_at, idx, (cb, event) in self._queue:
+            # Check all filters
+            if category is not None and event.category != category:
+                continue
+            if scope is not None and event.scope != scope:
+                continue
+            if system is not None and event.system != system:
+                continue
+
+            result.append(event)
+
+            # Stop if limit reached
+            if limit is not None and len(result) >= limit:
+                break
+
+        return result
