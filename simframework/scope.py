@@ -130,3 +130,51 @@ class Domain:
     def __repr__(self) -> str:
         scope_count = len(self._scopes)
         return f"Domain(name='{self.name}', scopes={scope_count})"
+
+    @classmethod
+    def from_yaml(cls, filepath: str) -> "Domain":
+        """Load a Domain definition from a YAML file.
+
+        The YAML format expected is:
+
+        name: Optional domain name
+        scopes:
+          - path: "root/child/sub"
+            properties:
+              key: value
+
+        Each `path` is split on `/` to create any necessary parent scopes.
+        """
+        try:
+            import yaml
+        except Exception as exc:  # pragma: no cover - dependency/platform
+            raise RuntimeError("PyYAML is required to load domain YAML") from exc
+
+        with open(filepath, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+
+        name = data.get("name", "domain")
+        domain = cls(name)
+
+        for entry in data.get("scopes", []):
+            path = entry.get("path") or entry.get("name")
+            if not path:
+                continue
+            properties = entry.get("properties", {}) or {}
+            parts = [p for p in path.split("/") if p]
+            parent = None
+            for i, part in enumerate(parts):
+                full = "/".join(parts[: i + 1])
+                # Use registered full_path style (without leading slash)
+                full = full
+                existing = domain.get_scope(full)
+                if existing is None:
+                    # Only attach properties to the leaf unless explicitly provided
+                    props = properties if i == len(parts) - 1 else {}
+                    scope = Scope(name=part, parent=parent, properties=props)
+                    domain.register_scope(scope)
+                    parent = scope
+                else:
+                    parent = existing
+
+        return domain

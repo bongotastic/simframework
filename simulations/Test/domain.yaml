@@ -1,0 +1,11 @@
+name: TestSimulationDomain
+scopes:
+  - path: growth
+    properties:
+      description: Growth-related events
+  - path: weather
+    properties:
+      description: Weather-related events
+  - path: people
+    properties:
+      description: People-related events
