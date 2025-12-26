@@ -7,16 +7,21 @@ try:
     from simframework.scheduler import Scheduler
     from simframework.event import Event
     from simframework.scope import Domain, Scope
+    from simframework.engine import SimulationEngine
+    from simframework.entity import Entity
 except ImportError:
     # Fallback for running in environments where absolute imports fail
     from .scheduler import Scheduler
     from .event import Event
     from .scope import Domain, Scope
+    from .engine import SimulationEngine
+    from .entity import Entity
 
 
 def main():
     start_time = datetime.datetime(2025, 1, 1, 0, 0, 0)
-    scheduler = Scheduler(start_time=start_time)
+    engine = SimulationEngine(start_time=start_time)
+    scheduler = engine.scheduler
 
     # Attempt to load a domain definition for the simulation (LunarStation)
     pkg_root = Path(__file__).resolve().parents[1]
@@ -31,6 +36,81 @@ def main():
 
     # Generate 40 events spread across 1-120 minutes in the future
     five_min_delta = datetime.timedelta(minutes=5)
+
+    # Instantiate a StationTypeA and two astronaut agents (if templates are available)
+    station_instance = None
+    astronaut_instances = []
+    if domain is not None:
+        st_template = domain.get_system_template("StationTypeA")
+        if st_template is not None:
+            station_instance = st_template.instantiate(instance_id="station-1")
+            engine.add_system_instance(station_instance)
+
+        ag_template = domain.get_agent_template("astronaut")
+        if ag_template is not None:
+            a1 = ag_template.instantiate(instance_id="astro-1")
+            a2 = ag_template.instantiate(instance_id="astro-2")
+            engine.add_agent(a1)
+            engine.add_agent(a2)
+            astronaut_instances = [a1, a2]
+
+    # Print a brief instance summary
+    print("\nINSTANCES:")
+    if station_instance is not None:
+        print(f"  Station: {station_instance.id} (template={station_instance.template.name})")
+        if station_instance.children:
+            child_names = ', '.join([c.template.name for c in station_instance.children])
+            print(f"    Modules: {child_names}")
+    if astronaut_instances:
+        print(f"  Agents: {', '.join([a.id for a in astronaut_instances])}")
+
+    # --- Demo setup: place modules/systems and entities, set agent locations and schedule interactions ---
+    if station_instance is not None:
+        # Register child modules as systems in the engine for lookup
+        modules_by_name = {}
+        for child in station_instance.children:
+            engine.add_system_instance(child)
+            modules_by_name[child.template.name] = child
+
+        # Create sample entities located in different modules
+        toolbox = Entity("toolbox")
+        experiment = Entity("experiment")
+        # Assign locations (simple attribute) to entities
+        if "living_habitat" in modules_by_name:
+            toolbox.location = modules_by_name["living_habitat"]
+        if "science" in modules_by_name:
+            experiment.location = modules_by_name["science"]
+        engine.add_entity(toolbox, "toolbox-1")
+        engine.add_entity(experiment, "experiment-1")
+
+        # Place agents in different modules so their perceptions differ
+        if astronaut_instances:
+            a1, a2 = astronaut_instances
+            if "living_habitat" in modules_by_name:
+                a1.set_location(modules_by_name["living_habitat"])
+            if "science" in modules_by_name:
+                a2.set_location(modules_by_name["science"])
+
+            # Show initial perception (location-based by default)
+            for a in astronaut_instances:
+                seen = a.perceive_entities(engine)
+                seen_names = ", ".join([e.name for e in seen]) if seen else "(none)"
+                print(f"Agent {a.id} at {a.location.id if a.location is not None else '-'} sees: {seen_names}")
+
+            # Schedule an interaction: astronaut1 will interact with life_support in 60s
+            if "life_support" in modules_by_name:
+                life = modules_by_name["life_support"]
+                a1.interact_with_system(engine, life.id, 60.0, lambda a_id=a1.id, sys_id=life.id: print(f"[Interaction] Agent {a_id} services {sys_id} at {scheduler.now}"))
+
+            # Schedule a movement: astronaut2 moves to living_habitat in 120s
+            if "living_habitat" in modules_by_name:
+                dest = modules_by_name["living_habitat"]
+                def move_agent(agent, to):
+                    agent.set_location(to)
+                    print(f"[Move] Agent {agent.id} moved to {to.id} at {scheduler.now}")
+                scheduler.schedule(120.0, move_agent, a2, dest)
+
+    # --- End demo setup ---
 
     for i in range(1, 41):
         # Spread events across 1-120 minutes (i * 3 minutes each)
@@ -78,13 +158,11 @@ def main():
         people_label = "personnel"
 
     personnel_events = scheduler.peek_events(scope=domain.get_scope(people_label) if domain is not None else None)
-    for event_num, (run_at, event) in enumerate(personnel_events, start=1):
-        elapsed_minutes = (run_at - start_time).total_seconds() / 60
-        scope_path = event.scope.full_path() if getattr(event, "scope", None) is not None else "-"
+    for _, (run_at, event) in enumerate(personnel_events, start=1):
+        scope_name = event.scope.name if getattr(event, "scope", None) is not None else "-"
+        event_id = event.data.get("event_id", "-")
         print(
-            f"Event #{event_num:2d} | Timestamp: {run_at} | Elapsed: {elapsed_minutes:6.1f} min | "
-            f"Scope: {event.scope.name if getattr(event, 'scope', None) is not None else '-':12s} | ScopePath: {scope_path:30s} | Timespan: {event.timespan} | "
-            f"ID: {event.data['event_id']}")
+            f"ID: {event_id} | Time: {run_at.strftime('%Y-%m-%d %H:%M:%S')} | Scope: {scope_name} | Timespan: {event.timespan}")
 
     print(f"\nPhase 1 complete: {len(personnel_events)} '{people_label}' events found in queue (not removed)")
     print("=" * 90)
@@ -97,13 +175,10 @@ def main():
         event = scheduler.step()
         if event is None:
             break
-        event_num += 1
-        elapsed_minutes = (scheduler.now - start_time).total_seconds() / 60
-        scope_path = event.scope.full_path() if getattr(event, "scope", None) is not None else "-"
+        scope_name = event.scope.name if getattr(event, "scope", None) is not None else "-"
+        event_id = event.data.get("event_id", "-")
         print(
-            f"Event #{event_num:2d} | Timestamp: {scheduler.now} | Elapsed: {elapsed_minutes:6.1f} min | "
-            f"Scope: {event.scope.name if getattr(event, 'scope', None) is not None else '-':12s} | ScopePath: {scope_path:30s} | Timespan: {event.timespan} | "
-            f"ID: {event.data['event_id']}")
+            f"ID: {event_id} | Time: {scheduler.now.strftime('%Y-%m-%d %H:%M:%S')} | Scope: {scope_name} | Timespan: {event.timespan}")
 
     print("=" * 90)
     print(f"Simulation ended at {scheduler.now}")
