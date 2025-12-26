@@ -3,7 +3,7 @@ from datetime import timedelta
 
 try:
     from simframework.engine import SimulationEngine
-    from simframework.system import SystemTemplate, Agent
+    from simframework.system import SystemTemplate, Agent, AgentTemplate
     from simframework.event import Event
     from simframework.entity import Entity
     from simframework.scope import Scope
@@ -14,7 +14,7 @@ except ImportError:
     if str(pkg_root) not in sys.path:
         sys.path.insert(0, str(pkg_root))
     from simframework.engine import SimulationEngine
-    from simframework.system import SystemTemplate, Agent
+    from simframework.system import SystemTemplate, Agent, AgentTemplate
     from simframework.event import Event
     from simframework.entity import Entity
     from simframework.scope import Scope
@@ -66,3 +66,18 @@ class TestAgentBehavior:
         task_scope = Scope("exploration")
         a.assign_task(task_scope)
         assert a.current_task == task_scope
+
+    def test_agent_template_instantiation(self):
+        # AgentTemplate should instantiate Agent instances and children
+        tmpl = AgentTemplate("scout", properties={"vision": {"default": 10, "transitive": True}})
+        child_t = SystemTemplate("sensor", properties={"range": 100})
+        tmpl.add_child(child_t)
+
+        a = tmpl.instantiate(instance_id="scout-1")
+        assert isinstance(a, Agent)
+        assert a.id == "scout-1"
+        assert len(a.children) == 1
+        child = a.children[0]
+        assert child.template.name == "sensor"
+        # Transitive property from agent template should be available to child
+        assert child.get_property("vision") == 10

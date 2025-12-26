@@ -230,3 +230,40 @@ class Agent(SystemInstance):
     def interact_with_system(self, engine: "SimulationEngine", system_id: str, delay: float, callback, *args, **kwargs):
         """Convenience wrapper allowing an agent to schedule work on a system."""
         return engine.schedule_for_system(system_id, delay, callback, *args, **kwargs)
+
+
+class AgentTemplate(SystemTemplate):
+    """Template for creating Agent instances from a template.
+
+    Behaves like `SystemTemplate.instantiate()` but returns `Agent` instances
+    (which extend `SystemInstance`) when instantiated. Child templates that are
+    `AgentTemplate` will produce `Agent` children; other child templates will
+    produce `SystemInstance` children as usual.
+    """
+
+    def instantiate(
+        self,
+        instance_id: Optional[str] = None,
+        *,
+        parent: Optional[SystemInstance] = None,
+        overrides: Optional[Dict[str, Any]] = None,
+        include_children: bool = True,
+        **state: Any,
+    ) -> "Agent":
+        combined_overrides = dict(overrides or {})
+        combined_overrides.update(state)
+        inst = Agent(
+            template=self,
+            id=instance_id or f"{self.name}-inst",
+            parent=parent,
+            overrides=combined_overrides,
+        )
+        if include_children:
+            for child_template in self.children:
+                # Preserve specialized agent children when templates are AgentTemplate
+                if isinstance(child_template, AgentTemplate):
+                    child_inst = child_template.instantiate(parent=inst)
+                else:
+                    child_inst = child_template.instantiate(parent=inst)
+                inst.add_child(child_inst)
+        return inst
