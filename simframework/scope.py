@@ -133,9 +133,13 @@ class Domain:
 
     @classmethod
     def from_yaml(cls, filepath: str) -> "Domain":
-        """Load a Domain definition from a YAML file.
+        """Load a Domain definition from a YAML file or directory of YAML files.
 
-        The YAML format expected is:
+        If `filepath` is a directory, all files ending with `.yaml` or `.yml`
+        in that directory are loaded in alphabetical order and merged into a
+        single Domain. Later files may add additional scopes.
+
+        The YAML format expected for each file is:
 
         name: Optional domain name
         scopes:
@@ -150,31 +154,50 @@ class Domain:
         except Exception as exc:  # pragma: no cover - dependency/platform
             raise RuntimeError("PyYAML is required to load domain YAML") from exc
 
-        with open(filepath, "r", encoding="utf-8") as fh:
-            data = yaml.safe_load(fh) or {}
+        from pathlib import Path
+        p = Path(filepath)
+        if not p.exists():
+            raise FileNotFoundError(f"Domain YAML path not found: {filepath}")
 
-        name = data.get("name", "domain")
-        domain = cls(name)
+        files = []
+        if p.is_dir():
+            # Collect YAML files sorted for deterministic loading order
+            for child in sorted(p.iterdir()):
+                if child.suffix.lower() in (".yml", ".yaml") and child.is_file():
+                    files.append(child)
+        else:
+            files = [p]
 
-        for entry in data.get("scopes", []):
-            path = entry.get("path") or entry.get("name")
-            if not path:
-                continue
-            properties = entry.get("properties", {}) or {}
-            parts = [p for p in path.split("/") if p]
-            parent = None
-            for i, part in enumerate(parts):
-                full = "/".join(parts[: i + 1])
-                # Use registered full_path style (without leading slash)
-                full = full
-                existing = domain.get_scope(full)
-                if existing is None:
-                    # Only attach properties to the leaf unless explicitly provided
-                    props = properties if i == len(parts) - 1 else {}
-                    scope = Scope(name=part, parent=parent, properties=props)
-                    domain.register_scope(scope)
-                    parent = scope
-                else:
-                    parent = existing
+        domain = None
+        for f in files:
+            with open(f, "r", encoding="utf-8") as fh:
+                data = yaml.safe_load(fh) or {}
+
+            name = data.get("name")
+            if domain is None:
+                domain = cls(name or "domain")
+            # If multiple files provide a name, we keep the first non-empty name.
+
+            for entry in data.get("scopes", []) or []:
+                path = entry.get("path") or entry.get("name")
+                if not path:
+                    continue
+                properties = entry.get("properties", {}) or {}
+                parts = [p for p in path.split("/") if p]
+                parent = None
+                for i, part in enumerate(parts):
+                    full = "/".join(parts[: i + 1])
+                    existing = domain.get_scope(full)
+                    if existing is None:
+                        props = properties if i == len(parts) - 1 else {}
+                        scope = Scope(name=part, parent=parent, properties=props)
+                        domain.register_scope(scope)
+                        parent = scope
+                    else:
+                        parent = existing
+
+        if domain is None:
+            # No files matched; return an empty domain with the directory name
+            return cls(Path(filepath).name)
 
         return domain
