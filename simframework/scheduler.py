@@ -138,8 +138,9 @@ class Scheduler:
 
         If `scope` is provided, the scheduler searches chronologically for the
         next event whose `Event.scope` equals the provided `scope` and removes
-        it from the queue. System filtering is also supported. If no matching
-        event exists, returns `None`.
+        it from the queue. When `include_descendants` is True, events whose
+        `Event.scope` is a descendant of `scope` also match. System filtering
+        is also supported. If no matching event exists, returns `None`.
         """
         if not self._queue:
             return None
@@ -151,7 +152,17 @@ class Scheduler:
         # Keep others in temp so we can push them back preserving heap order.
         while self._queue:
             run_at, idx, (cb, event) = heappop(self._queue)
-            matches_scope = scope is None or event.scope == scope
+            # Scope matching supports optional descendant inclusion
+            if scope is None:
+                matches_scope = True
+            else:
+                if event.scope is None:
+                    matches_scope = False
+                elif include_descendants:
+                    matches_scope = (event.scope == scope) or scope.is_ancestor_of(event.scope)
+                else:
+                    matches_scope = event.scope == scope
+
             matches_system = True
             if system is not None:
                 if include_descendants:
@@ -208,29 +219,41 @@ class Scheduler:
         if until is not None and self._time < until:
             self._time = until
 
-    def peek_events(self, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None, limit: Optional[int] = None, *, include_descendants: bool = False) -> List[Tuple[datetime.datetime, Event]]:
+    def peek_events(self, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None, limit: Optional[int] = None, *, include_descendants: bool = True) -> List[Tuple[datetime.datetime, Event]]:
         """Look ahead at upcoming events without modifying the queue.
 
         Returns a list of (run_at, Event) tuples in chronological order, optionally filtered
         by scope or system. If multiple filters are provided, all must match.
 
         Args:
-            scope: Optional Scope object to filter by.
+            scope: Optional Scope object to filter by. When `include_descendants` is True
+                (the default), scopes that are descendants of `scope` will also match.
             system: Optional SystemInstance to filter by.
             limit: Optional maximum number of events to return.
-            include_descendants: When True, descendant systems of `system` also match.
+            include_descendants: When True, descendant systems/scopes of the provided
+                `system` or `scope` also match.
 
         Returns:
             A list of (datetime, Event) tuples matching the filters (or empty if none match).
         """
         result = []
         for run_at, idx, (cb, event) in self._queue:
-            # Check all filters
-            if scope is not None and event.scope != scope:
-                continue
-            if system is not None and event.system != system:
-                if not include_descendants or not _is_system_or_descendant(event.system, system):
+            # Scope filtering supports descendant matching when requested
+            if scope is not None:
+                if event.scope is None:
                     continue
+                if include_descendants:
+                    if not (event.scope == scope or scope.is_ancestor_of(event.scope)):
+                        continue
+                else:
+                    if event.scope != scope:
+                        continue
+
+            # System filtering supports descendant matching when requested
+            if system is not None:
+                if not include_descendants or not _is_system_or_descendant(event.system, system):
+                    if event.system != system:
+                        continue
 
             result.append((run_at, event))
 
