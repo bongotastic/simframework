@@ -3,6 +3,15 @@ scopes:
   - path: environment
     properties:
       description: "Environmental conditions for greenhouse"
+  - path: environment/temperature
+    properties:
+      description: "Temperature monitoring and control"
+  - path: environment/light
+    properties:
+      description: "Lighting conditions for plant growth"
+  - path: environment/moisture
+    properties:
+      description: "Soil and air moisture monitoring"
 
 systems:
   - name: Greenhouse
