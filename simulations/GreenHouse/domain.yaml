@@ -18,3 +18,15 @@ systems:
     properties:
       capacity: 100
       description: "Automated greenhouse module"
+      temperature:
+        default: 22.0
+        metadata:
+          unit: C
+      moisture:
+        default: 0.35
+        metadata:
+          unit: fraction
+      light:
+        default: 12000
+        metadata:
+          unit: lux

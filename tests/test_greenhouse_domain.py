@@ -21,6 +21,14 @@ def test_greenhouse_domain_loads():
     assert d.get_scope("environment/temperature") is not None
     assert d.get_scope("environment/light") is not None
     assert d.get_scope("environment/moisture") is not None
-    # system template exists
+    # system template exists and contains environmental properties
     assert "Greenhouse" in d.system_templates
+    mt = d.get_system_template("Greenhouse")
+    assert mt is not None
+    assert mt.property_spec("temperature") is not None
+    assert mt.property_spec("temperature").default == 22.0
+    assert mt.property_spec("moisture") is not None
+    assert mt.property_spec("moisture").default == 0.35
+    assert mt.property_spec("light") is not None
+    assert mt.property_spec("light").default == 12000
     assert d.get_agent_template("Greenhouse") is None
