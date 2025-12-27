@@ -1,0 +1,11 @@
+name: GreenHouseDomain
+scopes:
+  - path: environment
+    properties:
+      description: "Environmental conditions for greenhouse"
+
+systems:
+  - name: Greenhouse
+    properties:
+      capacity: 100
+      description: "Automated greenhouse module"
