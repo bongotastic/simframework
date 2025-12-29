@@ -2,6 +2,7 @@ import datetime
 from pathlib import Path
 import sys
 import pytest
+import logging
 
 try:
     from simulations.GreenHouse.simulation import GreenhouseSimulation
@@ -34,3 +35,23 @@ def test_moisture_event_applies_to_anchored_system():
     sim.on_moisture_event(ev)
     assert gh1.get_property("moisture") == pytest.approx(0.35 - 0.05)
     assert gh2.get_property("moisture") == pytest.approx(0.35)
+
+
+def test_moisture_event_without_anchored_system_is_ignored(caplog):
+    start = datetime.datetime(2025, 1, 1, 0, 0, 0)
+    domain_yaml = Path(__file__).resolve().parent / "../simulations/GreenHouse/domain.yaml"
+    sim = GreenhouseSimulation(start_time=start, domain_yaml=str(domain_yaml))
+
+    gh = sim.setup_greenhouse(instance_id="gh-standalone")
+    assert gh is not None
+
+    ev = Event(data={"alter": -0.05, "type": "environment/moisture"})
+
+    with caplog.at_level(logging.ERROR):
+        sim.on_moisture_event(ev)
+
+    # The greenhouse should be unchanged
+    assert gh.get_property("moisture") == pytest.approx(0.35)
+
+    # Verify an error was logged about missing anchored system
+    assert any("no anchored system" in r.getMessage() for r in caplog.records)

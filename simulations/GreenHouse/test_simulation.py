@@ -124,6 +124,8 @@ def test_moisture_event_uses_event_properties_not_system():
     gh.set_property("moisture", 0.5)
 
     ev = Event(data={"alter": -0.15, "type": "environment/moisture"})
+    # Anchor the event to the greenhouse instance so the handler can act on it
+    ev.system = gh
     sim.dispatch_event(ev)
 
     # Alter is additive: 0.5 + (-0.15)
@@ -132,6 +134,7 @@ def test_moisture_event_uses_event_properties_not_system():
     # Relative alter example: 0.5 with relative_alter=0.1 -> 0.55
     gh.set_property("moisture", 0.5)
     ev2 = Event(data={"relative_alter": 0.1, "type": "environment/moisture"})
+    ev2.system = gh
     sim.dispatch_event(ev2)
     assert gh.get_property("moisture") == pytest.approx(0.5 * 1.1)
 
@@ -164,6 +167,8 @@ def test_gradual_change_schedules_followup_moisture_event():
 
     gh.set_property("moisture", 0.2)
     ev = Event(data={"gradual_change": 0.9, "type": "environment/moisture"}, timespan=datetime.timedelta(seconds=5))
+    # Anchor the event so the handler can update the greenhouse instance
+    ev.system = gh
     sim.dispatch_event(ev)
 
     queued = sim.scheduler.peek_events()

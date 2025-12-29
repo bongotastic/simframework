@@ -21,6 +21,9 @@ from typing import Optional
 from simframework.engine import SimulationEngine
 from simframework.event import Event
 from simframework.scope import Domain, Scope
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class GreenhouseSimulation(SimulationEngine):
@@ -160,9 +163,13 @@ class GreenhouseSimulation(SimulationEngine):
         - `relative_alter`: multiplicative relative change
         - `gradual_change`: move 25% toward target and reschedule if not close
         """
-        # Apply changes to the event-anchored system when provided, otherwise
-        # fall back to the greenhouse instance on this simulation (if any).
-        target_system = event.system if getattr(event, "system", None) is not None else self.greenhouse
+        # Require an anchored system for moisture events. If none is provided
+        # log an error and ignore the event (don't fall back to `self.greenhouse`).
+        if getattr(event, "system", None) is None:
+            _logger.error("moisture event received with no anchored system; ignoring event: %r", event)
+            return
+
+        target_system = event.system
         if target_system is None:
             return
 
