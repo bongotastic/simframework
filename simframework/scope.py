@@ -16,11 +16,14 @@ class Scope:
 
     A scope can have a parent scope, creating a hierarchy. Scopes can also
     carry metadata via properties for domain-specific information.
+    
+    Scopes can also reference processes that apply to them (by name).
     """
 
     name: str
     parent: Optional[Scope] = None
     properties: Dict[str, Any] = field(default_factory=dict)
+    processes: List[str] = field(default_factory=list)  # Process names
 
     def full_path(self) -> str:
         """Return the full hierarchical path of this scope (e.g., 'biology/organism/growth')."""
@@ -210,6 +213,7 @@ class Domain:
                 if not path:
                     continue
                 properties = entry.get("properties", {}) or {}
+                processes = entry.get("processes", []) or []  # Process names
                 parts = [p for p in path.split("/") if p]
                 parent = None
                 for i, part in enumerate(parts):
@@ -217,7 +221,8 @@ class Domain:
                     existing = domain.get_scope(full)
                     if existing is None:
                         props = properties if i == len(parts) - 1 else {}
-                        scope = Scope(name=part, parent=parent, properties=props)
+                        procs = processes if i == len(parts) - 1 else []
+                        scope = Scope(name=part, parent=parent, properties=props, processes=procs)
                         domain.register_scope(scope)
                         parent = scope
                     else:

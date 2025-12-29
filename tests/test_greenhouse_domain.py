@@ -20,6 +20,11 @@ def test_greenhouse_domain_loads():
     assert d.get_scope("environment") is not None
     assert d.get_scope("environment/temperature") is not None
     assert d.get_scope("environment/temperature/heat_loss") is not None
+    
+    # Verify heat_loss scope has HeatLoss process bound
+    heat_loss_scope = d.get_scope("environment/temperature/heat_loss")
+    assert "HeatLoss" in heat_loss_scope.processes
+    
     assert d.get_scope("environment/light") is not None
     assert d.get_scope("environment/moisture") is not None
     # system template exists and contains environmental properties

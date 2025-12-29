@@ -9,6 +9,8 @@ scopes:
   - path: environment/temperature/heat_loss
     properties:
       description: "Heat loss processes from the greenhouse"
+    processes:
+      - HeatLoss
   - path: environment/light
     properties:
       description: "Lighting conditions for plant growth"
