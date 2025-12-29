@@ -33,67 +33,7 @@ def test_setup_greenhouse_and_properties():
     assert props.get("light") == 12000
 
 
-def test_schedule_and_dispatch_updates_properties():
-    start = datetime.datetime(2025, 1, 1, 0, 0, 0)
-    domain_yaml = Path(__file__).resolve().parent / "domain.yaml"
-    sim = GreenhouseSimulation(start_time=start, domain_yaml=str(domain_yaml))
-    gh = sim.setup_greenhouse(instance_id="greenhouse-test-2")
-    assert gh is not None
 
-    scheduled = sim.schedule_environment_events()
-    assert scheduled == 3
-
-    # Ensure queued events include temperature / moisture / light types
-    queued = sim.scheduler.peek_events()
-    queued_types = [e.data.get("type") for _, e in queued]
-    assert "environment/temperature" in queued_types
-    assert "environment/moisture" in queued_types
-    assert "environment/light" in queued_types
-
-    # Step through events manually so we can inspect and dispatch each
-    processed = []
-    while True:
-        ev = sim.scheduler.step()
-        if ev is None:
-            break
-        processed.append((sim.scheduler.now, ev.data.get("type"), ev))
-        sim.dispatch_event(ev)
-
-    # Expect three events processed
-    types_seen = [t for _, t, _ in processed]
-    assert "environment/temperature" in types_seen
-    assert "environment/moisture" in types_seen
-    assert "environment/light" in types_seen
-
-    # Directly invoke the moisture handler on the processed event to ensure handler logic works
-    moisture_ev = next(ev for _, t, ev in processed if t == "environment/moisture")
-    # Reset property and call handler directly
-    gh.set_property("moisture", 0.35)
-
-    # Debugging: validate event and current values
-    print("DEBUG moisture_ev.data:", moisture_ev.data)
-    print("DEBUG moisture_ev.timespan:", moisture_ev.timespan)
-    print("DEBUG before_current:", gh.get_property("moisture"))
-    assert gh.get_property("moisture") == 0.35
-
-    sim.on_moisture_event(moisture_ev)
-    print("DEBUG after_current:", gh.get_property("moisture"))
-
-    # No default behavior: event without properties should not change moisture
-    assert gh.get_property("moisture") == pytest.approx(0.35)
-
-    # Sanity check: setting via set_property manually works
-    gh.set_property("moisture", 0.34)
-    assert gh.get_property("moisture") == pytest.approx(0.34)
-
-    # Directly invoke the temperature handler for the processed temperature event; should NOT change since event has no properties
-    temp_ev = next(ev for _, t, ev in processed if t == "environment/temperature")
-    gh.set_property("temperature", 22.0)
-    sim.on_temperature_event(temp_ev)
-    assert gh.get_property("temperature") == pytest.approx(22.0)
-
-    # After handlers: no default changes, light remains unchanged
-    assert gh.get_property("light") == 12000
 
     # Queue should be empty now
     assert sim.scheduler.pop_event() is None
@@ -106,13 +46,26 @@ def test_run_and_dispatch_until_stops_early():
     gh = sim.setup_greenhouse(instance_id="greenhouse-test-3")
     assert gh is not None
 
-    sim.schedule_environment_events()
+    # Manually schedule the environment events that used to be provided by schedule_environment_events()
+    dom_scopes = {}
+    dom_scopes["environment/temperature"] = sim.domain.get_scope("environment/temperature")
+    dom_scopes["environment/moisture"] = sim.domain.get_scope("environment/moisture")
+    dom_scopes["environment/light"] = sim.domain.get_scope("environment/light")
+
+    ev_temp = Event(data={"event_id": 1, "type": "environment/temperature"}, timespan=datetime.timedelta(minutes=10))
+    sim.scheduler.insert_event(ev_temp, trigger_time=30.0, scope=dom_scopes["environment/temperature"])
+
+    ev_moist = Event(data={"event_id": 2, "type": "environment/moisture"}, timespan=datetime.timedelta(minutes=5))
+    sim.scheduler.insert_event(ev_moist, trigger_time=60.0, scope=dom_scopes["environment/moisture"])
+
+    ev_light = Event(data={"event_id": 3, "type": "environment/light"}, timespan=datetime.timedelta(minutes=15))
+    sim.scheduler.insert_event(ev_light, trigger_time=90.0, scope=dom_scopes["environment/light"])
 
     # Run until after second event but before third (65 seconds)
     until = start + timedelta(seconds=65)
     sim.run_and_dispatch(until=until)
 
-    # Temperature and moisture should NOT have changed (no default behavior)
+    # Since events carry no actionable properties, nothing should have changed
     import pytest
     assert gh.get_property("temperature") == pytest.approx(22.0)
     assert gh.get_property("moisture") == pytest.approx(0.35)

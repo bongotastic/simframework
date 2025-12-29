@@ -124,3 +124,41 @@ class SimulationEngine:
 
     def run(self, until: Optional[datetime.datetime] = None) -> None:
         self.scheduler.run(until=until)
+
+    def print_status(self) -> None:
+        """Print a compact status of the engine and the scheduler queue.
+
+        Shows current scheduler time, number of events queued, next and last
+        event times (if any), and a compact listing of queued events:
+          ID | YYYY-MM-DD HH:MM:SS | scope | timespan
+        """
+        events = self.scheduler.peek_events()
+        count = len(events)
+        now = self.scheduler.now
+
+        next_time = events[0][0] if events else None
+        last_time = events[-1][0] if events else None
+
+        print(f"Status at {now.strftime('%Y-%m-%d %H:%M:%S')}: {count} event(s) in queue")
+        if next_time is not None:
+            print(f"Next event: {next_time.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"Last  event: {last_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+        print("Events:")
+        for run_at, event in events:
+            # compact id retrieval
+            eid = ""
+            try:
+                if isinstance(event.data, dict):
+                    eid = event.data.get("event_id") or event.data.get("id") or ""
+            except Exception:
+                eid = ""
+
+            # scope string
+            scope = getattr(event, "scope", None)
+            scope_str = scope.full_path() if scope is not None else ""
+
+            timespan = getattr(event, "timespan", "")
+            timespan_str = str(timespan) if timespan is not None else ""
+
+            print(f"{str(eid):>3} | {run_at.strftime('%Y-%m-%d %H:%M:%S')} | {scope_str:30s} | {timespan_str}")

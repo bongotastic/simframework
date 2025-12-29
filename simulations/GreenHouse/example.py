@@ -38,8 +38,6 @@ def main():
     print("Initial properties:")
     print(gh.resolved_properties)
 
-    sim.schedule_environment_events()
-
     # Add a special event to increase temperature to 30°C using gradual_change
     print("Scheduling a gradual temperature change to 30°C (target)")
     temp_target_event = Event(data={"gradual_change": 30.0, "type": "environment/temperature"}, timespan=datetime.timedelta(minutes=30))

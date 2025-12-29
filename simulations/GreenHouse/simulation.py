@@ -67,32 +67,9 @@ class GreenhouseSimulation(SimulationEngine):
         self.add_system_instance(self.greenhouse)
         return self.greenhouse
 
-    def schedule_environment_events(self) -> int:
-        """Schedule a few sample environment events (temperature, moisture, light).
-
-        Returns the number of events scheduled.
-        """
-        if self.domain is None:
-            return 0
-
-        dom_scopes = {}
-        dom_scopes["environment/temperature"] = self.domain.get_scope("environment/temperature")
-        dom_scopes["environment/moisture"] = self.domain.get_scope("environment/moisture")
-        dom_scopes["environment/light"] = self.domain.get_scope("environment/light")
-
-        event_defs = [
-            (30.0, "environment/temperature", datetime.timedelta(minutes=10)),
-            (60.0, "environment/moisture", datetime.timedelta(minutes=5)),
-            (90.0, "environment/light", datetime.timedelta(minutes=15)),
-        ]
-
-        total = 0
-        for idx, (trigger_seconds, scope_path, timespan) in enumerate(event_defs, start=1):
-            ev = Event(data={"event_id": idx, "type": scope_path}, timespan=timespan)
-            scope_obj = dom_scopes.get(scope_path)
-            self.scheduler.insert_event(ev, trigger_time=trigger_seconds, scope=scope_obj)
-            total += 1
-        return total
+    # NOTE: `schedule_environment_events` was removed to encourage explicit event
+    # scheduling via `scheduler.insert_event(...)`. This keeps the API minimal and
+    # makes scheduling explicit in user code / tests.
 
     def dispatch_event(self, event: Event) -> None:
         """Route an Event to the appropriate handler based on its scope or data."""
@@ -250,7 +227,6 @@ class GreenhouseSimulation(SimulationEngine):
 
         if changed:
             self.greenhouse.set_property("light", new_l)
-            print(f"Handled light event {event.data.get('event_id')}: light -> {new_l}")
 
     # --- convenience run loop ---
     def run_and_dispatch(self, until: Optional[datetime.datetime] = None) -> None:
