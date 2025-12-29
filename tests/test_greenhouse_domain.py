@@ -31,4 +31,28 @@ def test_greenhouse_domain_loads():
     assert mt.property_spec("moisture").default == 0.35
     assert mt.property_spec("light") is not None
     assert mt.property_spec("light").default == 12000
+
+    # Sub-systems are modeled as child templates attached to the Greenhouse
+    child_names = [c.name for c in mt.children]
+    assert "Chamber" in child_names
+    assert "PowerUnit" in child_names
+
+    # Validate Chamber properties
+    chamber_t = next(c for c in mt.children if c.name == "Chamber")
+    assert chamber_t.property_spec("volume") is not None
+    assert chamber_t.property_spec("volume").default == 100.0
+    assert chamber_t.property_spec("volume").metadata.get("unit") == "m^3"
+
+    # Validate PowerUnit and its Heater child
+    power_t = next(c for c in mt.children if c.name == "PowerUnit")
+    assert power_t.property_spec("max_capacity") is not None
+    assert power_t.property_spec("max_capacity").default == 5000
+    assert any(c.name == "Heater" for c in power_t.children)
+
+    heater_t = next(c for c in power_t.children if c.name == "Heater")
+    assert heater_t.property_spec("input_w") is not None
+    assert heater_t.property_spec("output_w") is not None
+    assert heater_t.property_spec("input_w").default == 1000
+    assert heater_t.property_spec("output_w").default == 900
+
     assert d.get_agent_template("Greenhouse") is None

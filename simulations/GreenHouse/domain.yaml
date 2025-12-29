@@ -30,3 +30,27 @@ systems:
         default: 12000
         metadata:
           unit: lux
+    children:
+      - name: Chamber
+        properties:
+          volume:
+            default: 100.0
+            metadata:
+              unit: m^3
+      - name: PowerUnit
+        properties:
+          max_capacity:
+            default: 5000
+            metadata:
+              unit: W
+        children:
+          - name: Heater
+            properties:
+              input_w:
+                default: 1000
+                metadata:
+                  unit: W
+              output_w:
+                default: 900
+                metadata:
+                  unit: W
