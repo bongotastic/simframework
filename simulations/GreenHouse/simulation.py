@@ -160,9 +160,13 @@ class GreenhouseSimulation(SimulationEngine):
         - `relative_alter`: multiplicative relative change
         - `gradual_change`: move 25% toward target and reschedule if not close
         """
-        if self.greenhouse is None:
+        # Apply changes to the event-anchored system when provided, otherwise
+        # fall back to the greenhouse instance on this simulation (if any).
+        target_system = event.system if getattr(event, "system", None) is not None else self.greenhouse
+        if target_system is None:
             return
-        current = self.greenhouse.get_property("moisture", None)
+
+        current = target_system.get_property("moisture", None)
         if current is None:
             return
 
@@ -202,7 +206,7 @@ class GreenhouseSimulation(SimulationEngine):
         # Clamp to valid moisture range [0, 1] and update only if changed
         if changed:
             new_m = max(0.0, min(1.0, new_m))
-            self.greenhouse.set_property("moisture", new_m)
+            target_system.set_property("moisture", new_m)
 
     def on_light_event(self, event: Event) -> None:
         if self.greenhouse is None:
