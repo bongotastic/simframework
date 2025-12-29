@@ -109,13 +109,20 @@ class GreenhouseSimulation(SimulationEngine):
         :param event: Description
         :type event: Event
         """
-        if self.greenhouse is None:
+        # Require an anchored system for temperature events. If none is provided
+        # log an error and ignore the event (don't fall back to `self.greenhouse`).
+        if getattr(event, "system", None) is None:
+            _logger.error("temperature event received with no anchored system; ignoring event: %r", event)
             return
-        # Example: change temperature by a small fixed delta
-        current = self.greenhouse.get_property("temperature", None)
+
+        target_system = event.system
+        if target_system is None:
+            return
+
+        current = target_system.get_property("temperature", None)
         if current is None:
             return
-        
+
         # Only modify temperature when the event explicitly specifies an action
         changed = False
         new_temp = None
@@ -216,9 +223,17 @@ class GreenhouseSimulation(SimulationEngine):
             target_system.set_property("moisture", new_m)
 
     def on_light_event(self, event: Event) -> None:
-        if self.greenhouse is None:
+        # Require an anchored system for light events. If none is provided
+        # log an error and ignore the event (don't fall back to `self.greenhouse`).
+        if getattr(event, "system", None) is None:
+            _logger.error("light event received with no anchored system; ignoring event: %r", event)
             return
-        current = self.greenhouse.get_property("light", None)
+
+        target_system = event.system
+        if target_system is None:
+            return
+
+        current = target_system.get_property("light", None)
         if current is None:
             return
 
@@ -237,7 +252,7 @@ class GreenhouseSimulation(SimulationEngine):
             changed = True
 
         if changed:
-            self.greenhouse.set_property("light", new_l)
+            target_system.set_property("light", new_l)
 
     # --- convenience run loop ---
     def run_and_dispatch(self, until: Optional[datetime.datetime] = None) -> None:

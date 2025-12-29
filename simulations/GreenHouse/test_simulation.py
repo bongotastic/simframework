@@ -89,6 +89,7 @@ def test_temperature_event_uses_event_properties_not_system():
     gh.set_property("temperature", 22.0)
 
     ev = Event(data={"set": 5.0, "type": "environment/temperature"}, timespan=sim.scheduler.now - sim.scheduler.now)
+    ev.system = gh
     sim.dispatch_event(ev)
 
     # 'set' should set to the event value (absolute), so resulting temperature should be 5.0
@@ -97,17 +98,20 @@ def test_temperature_event_uses_event_properties_not_system():
     # Alter should be additive: set current to 20 and alter by +2 -> expect 22
     gh.set_property("temperature", 20.0)
     ev2 = Event(data={"alter": 2.0, "type": "environment/temperature"})
+    ev2.system = gh
     sim.dispatch_event(ev2)
     assert gh.get_property("temperature") == pytest.approx(22.0)
 
     # Relative alter: +10% of 20 -> 22; -10% -> 18
     gh.set_property("temperature", 20.0)
     ev3 = Event(data={"relative_alter": 0.1, "type": "environment/temperature"})
+    ev3.system = gh
     sim.dispatch_event(ev3)
     assert gh.get_property("temperature") == pytest.approx(22.0)
 
     gh.set_property("temperature", 20.0)
     ev4 = Event(data={"relative_alter": -0.1, "type": "environment/temperature"})
+    ev4.system = gh
     sim.dispatch_event(ev4)
     assert gh.get_property("temperature") == pytest.approx(18.0)
 
@@ -148,6 +152,7 @@ def test_gradual_change_schedules_followup_temperature_event():
 
     gh.set_property("temperature", 20.0)
     ev = Event(data={"gradual_change": 30.0, "type": "environment/temperature"}, timespan=datetime.timedelta(seconds=10))
+    ev.system = gh
     sim.dispatch_event(ev)
 
     # Because the delta is large, a follow-up event should be scheduled
