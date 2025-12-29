@@ -19,6 +19,7 @@ def test_greenhouse_domain_loads():
     # scope exists and child scopes exist
     assert d.get_scope("environment") is not None
     assert d.get_scope("environment/temperature") is not None
+    assert d.get_scope("environment/temperature/heat_loss") is not None
     assert d.get_scope("environment/light") is not None
     assert d.get_scope("environment/moisture") is not None
     # system template exists and contains environmental properties

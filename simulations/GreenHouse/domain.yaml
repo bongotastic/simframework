@@ -6,12 +6,28 @@ scopes:
   - path: environment/temperature
     properties:
       description: "Temperature monitoring and control"
+  - path: environment/temperature/heat_loss
+    properties:
+      description: "Heat loss processes from the greenhouse"
   - path: environment/light
     properties:
       description: "Lighting conditions for plant growth"
   - path: environment/moisture
     properties:
       description: "Soil and air moisture monitoring"
+
+processes:
+  - name: HeatLoss
+    properties:
+      inputs:
+        - energy: 0.1
+          metadata:
+            unit: W
+        - deltatime: 10
+          metadata:
+            unit: minutes
+      description: "Process to regulate temperature within the greenhouse"
+
 
 systems:
   - name: Greenhouse

@@ -21,6 +21,7 @@ from typing import Optional
 from simframework.engine import SimulationEngine
 from simframework.event import Event
 from simframework.scope import Domain, Scope
+from simframework.system import Process, SystemInstance
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -253,6 +254,21 @@ class GreenhouseSimulation(SimulationEngine):
 
         if changed:
             target_system.set_property("light", new_l)
+
+    def handle_heat_loss(self, system: Optional[SystemInstance], process: Optional[Process], duration: datetime.timedelta) -> None:
+        """Handle the HeatLoss process for a given system over a duration.
+
+        This is a stub method; no business logic is implemented here.
+        Integrate with `Process` and `Store` structures as needed to model
+        heat transfer, energy consumption, and resulting temperature changes.
+
+        Args:
+            system: The anchored system instance that experiences heat loss.
+            process: The `Process` definition representing the HeatLoss behavior.
+            duration: The time span over which to apply the HeatLoss process.
+        """
+        # Intentionally left unimplemented.
+        pass
 
     # --- convenience run loop ---
     def run_and_dispatch(self, until: Optional[datetime.datetime] = None) -> None:
