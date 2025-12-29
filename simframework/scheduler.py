@@ -6,7 +6,7 @@ support stochastic events, priorities, distributed scheduling, or generative-AI-
 event handlers.
 """
 from heapq import heappush, heappop
-from typing import Callable, Any, List, Tuple, Optional, Union, TYPE_CHECKING
+from typing import Any, List, Tuple, Optional, Union, TYPE_CHECKING
 import datetime
 
 try:
@@ -30,7 +30,7 @@ class Scheduler:
     read or set via the property.
 
     Methods:
-    - `schedule(delay, callback, *args, **kwargs)`: schedule callback after `delay`.
+    - `schedule(delay, **data)`: schedule an event after `delay`.
     - `step()`: execute the next scheduled event and advance time.
     - `run(until=None)`: run until queue empty or until datetime `until`.
     """
@@ -42,7 +42,8 @@ class Scheduler:
             raise TypeError("start_time must be a datetime.datetime if provided")
 
         self._time: datetime.datetime = start_time
-        self._queue: List[Tuple[datetime.datetime, int, Tuple[Callable[..., Any], tuple, dict]]] = []
+        # Queue stores (run_at, counter, event)
+        self._queue: List[Tuple[datetime.datetime, int, Event]] = []
         self._counter: int = 0
 
     @property
@@ -55,13 +56,15 @@ class Scheduler:
             raise TypeError("now must be a datetime.datetime")
         self._time = value
 
-    def schedule(self, delay: Union[float, datetime.timedelta, datetime.datetime], callback: Callable[..., Any], *args, event: Optional[Event] = None, **kwargs) -> Tuple[datetime.datetime, int]:
-        """Schedule `callback` to run at a specific time or after a delay.
+    def schedule(self, delay: Union[float, datetime.timedelta, datetime.datetime], event: Optional[Event] = None, **data) -> Tuple[datetime.datetime, int]:
+        """Schedule an event to run at a specific time or after a delay.
 
         `delay` may be:
         - an absolute `datetime.datetime` (trigger time independent of scheduler's now)
         - a float (seconds relative to scheduler's now)
         - a `datetime.timedelta` (relative to scheduler's now)
+
+        If `event` is not provided, a new `Event` is created with `data` as its payload.
 
         Returns the scheduled run time and an integer id.
         """
@@ -81,20 +84,19 @@ class Scheduler:
             raise TypeError("delay must be datetime, float seconds, or timedelta")
 
         if event is None:
-            event = Event(data={"args": args, "kwargs": kwargs})
-        heappush(self._queue, (run_at, self._counter, (callback, event)))
+            event = Event(data=data)
+        
+        heappush(self._queue, (run_at, self._counter, event))
         self._counter += 1
         return run_at, self._counter - 1
 
-    def insert_event(self, event: Event, trigger_time: Union[datetime.datetime, float, datetime.timedelta], callback: Optional[Callable[..., Any]] = None, *, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None) -> Tuple[datetime.datetime, int]:
+    def insert_event(self, event: Event, trigger_time: Union[datetime.datetime, float, datetime.timedelta], *, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None) -> Tuple[datetime.datetime, int]:
         """Insert a pre-built `Event` into the scheduler.
 
         - `event`: an instance of `Event`.
         - `trigger_time`: either an absolute `datetime.datetime`, a number of seconds
           (float/int) relative to the scheduler's `now`, or a `datetime.timedelta`
           relative to the scheduler's `now`.
-        - `callback`: optional callable to run when the event fires. If omitted,
-          the scheduler will use a no-op handler that returns the `Event`.
 
         Optional `scope` and `system` can be attached to the event for later
         filtering when peeking or popping events.
@@ -122,14 +124,7 @@ class Scheduler:
         else:
             raise TypeError("trigger_time must be datetime, seconds (float/int), or timedelta")
 
-        if callback is None:
-            def _default_noop(*_a, **_k):
-                return event
-            cb = _default_noop
-        else:
-            cb = callback
-
-        heappush(self._queue, (run_at, self._counter, (cb, event)))
+        heappush(self._queue, (run_at, self._counter, event))
         self._counter += 1
         return run_at, self._counter - 1
 
@@ -145,13 +140,13 @@ class Scheduler:
         if not self._queue:
             return None
 
-        temp: List[Tuple[datetime.datetime, int, Tuple[Callable[..., Any], Event]]] = []
+        temp: List[Tuple[datetime.datetime, int, Event]] = []
         found_event: Optional[Event] = None
 
         # Pop items until we find a matching scope/system (or run out).
         # Keep others in temp so we can push them back preserving heap order.
         while self._queue:
-            run_at, idx, (cb, event) = heappop(self._queue)
+            run_at, idx, event = heappop(self._queue)
             # Scope matching supports optional descendant inclusion
             if scope is None:
                 matches_scope = True
@@ -173,7 +168,7 @@ class Scheduler:
             if matches_scope and matches_system:
                 found_event = event
                 break
-            temp.append((run_at, idx, (cb, event)))
+            temp.append((run_at, idx, event))
 
         # Push back any items we removed that were not the target.
         for item in temp:
@@ -193,12 +188,8 @@ class Scheduler:
     def step(self) -> Optional[Event]:
         if not self._queue:
             return None
-        run_at, _idx, (callback, event) = heappop(self._queue)
+        run_at, _idx, event = heappop(self._queue)
         self._time = run_at
-        # Call the callback with args/kwargs for side effects
-        ev_args = event.data.get("args", ())
-        ev_kwargs = event.data.get("kwargs", {})
-        callback(*ev_args, **ev_kwargs)
         return event
 
     def run(self, until: Optional[datetime.datetime] = None) -> None:
@@ -237,7 +228,7 @@ class Scheduler:
             A list of (datetime, Event) tuples matching the filters (or empty if none match).
         """
         result = []
-        for run_at, idx, (cb, event) in self._queue:
+        for run_at, idx, event in self._queue:
             # Scope filtering supports descendant matching when requested
             if scope is not None:
                 if event.scope is None:

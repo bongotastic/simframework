@@ -94,28 +94,33 @@ class SimulationEngine:
         return self.systems.pop(agent_id, None)
 
     # --- scheduling helpers ---
-    def schedule_for_system(self, system_id: str, delay: float, callback, *args, event: Optional[Event] = None, **kwargs) -> tuple[datetime.datetime, int]:
+    def schedule_for_system(self, system_id: str, delay: float, event: Optional[Event] = None, **data) -> tuple[datetime.datetime, int]:
         """Schedule an event anchored to the system with id `system_id`.
 
         The scheduled `Event` will have its `.system` set to the SystemInstance.
+        If `event` is not provided, a new Event is created using `data`.
         """
         system = self.get_system(system_id)
         if system is None:
             raise KeyError(system_id)
         if event is None:
-            event = Event(data={"args": args, "kwargs": kwargs})
+            event = Event(data=data)
         event.system = system
-        return self.scheduler.schedule(delay, callback, *args, event=event)
+        return self.scheduler.schedule(delay, event=event, **data)
 
-    def schedule_for_agent(self, agent_id: str, delay: float, callback, *args, event: Optional[Event] = None, **kwargs) -> tuple[datetime.datetime, int]:
+    def schedule_for_agent(self, agent_id: str, delay: float, event: Optional[Event] = None, **data) -> tuple[datetime.datetime, int]:
+        """Schedule an event anchored to the agent with id `agent_id`.
+
+        The scheduled `Event` will have its `.system` set to the SystemInstance (agent).
+        If `event` is not provided, a new Event is created using `data`.
+        """
         agent = self.get_agent(agent_id)
         if agent is None:
             raise KeyError(agent_id)
         if event is None:
-            event = Event(data={"args": args, "kwargs": kwargs})
+            event = Event(data=data)
         event.system = agent
-        return self.scheduler.schedule(delay, callback, *args, event=event)
+        return self.scheduler.schedule(delay, event=event, **data)
 
     def run(self, until: Optional[datetime.datetime] = None) -> None:
         self.scheduler.run(until=until)
-

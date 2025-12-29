@@ -29,3 +29,12 @@ jobs:
     - name: Run tests
       run: |
         python -m pytest -q
+
+    - name: Run GreenHouse example
+      run: |
+        # Ensure the package root is importable and run the example script
+        PYTHONPATH=. python simulations/GreenHouse/example.py
+
+    - name: Run GreenHouse tests
+      run: |
+        PYTHONPATH=. python -m pytest -q simulations/GreenHouse/test_simulation.py

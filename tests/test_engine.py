@@ -36,7 +36,7 @@ class TestSimulationEngine:
         eng.add_system_instance(n1)
 
         # Schedule an event for system n1
-        eng.schedule_for_system("n1", 5.0, lambda: None)
+        eng.schedule_for_system("n1", 5.0)
         peeked = eng.scheduler.peek_events(system=n1)
         assert len(peeked) == 1
         run_at, ev = peeked[0]

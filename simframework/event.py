@@ -30,3 +30,19 @@ class Event:
         if self.system is not None:
             parts.append(f"system={self.system!r}")
         return f"Event({', '.join(parts)})"
+
+    def set_property(self, key: str, value: Any) -> None:
+        """Set a property on this Event's `data` dictionary.
+
+        Args:
+            key: The property key to set (typically a string).
+            value: The value to assign.
+        """
+        self.data[key] = value
+
+    def get_property(self, key: Any, default: Any = None) -> Any:
+        """Return the value associated with `key` in the event's `data`.
+
+        If the key is not present, return `default` (defaults to None).
+        """
+        return self.data.get(key, default)
