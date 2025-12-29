@@ -38,6 +38,7 @@ def main():
     print("Initial properties:")
     print(gh.resolved_properties)
 
+    # Gradual change in temperature
     # Add a special event to increase temperature to 30°C using gradual_change
     print("Scheduling a gradual temperature change to 30°C (target)")
     temp_target_event = Event(data={"gradual_change": 30.0, "type": "environment/temperature"}, timespan=datetime.timedelta(minutes=30), system=gh)
@@ -45,6 +46,12 @@ def main():
     # schedule to occur shortly after start (2 seconds)
     temp_scope = sim.domain.get_scope("environment/temperature") if sim.domain else None
     sim.scheduler.insert_event(temp_target_event, trigger_time=2.0, scope=temp_scope)
+
+    # Increase by 10% of light level
+    print("Scheduling a 10% increase in light level")
+    light_increase_event = Event(data={"relative_alter": 0.1, "type": "environment/light"}, timespan=datetime.timedelta(minutes=15), system=gh)
+    light_scope = sim.domain.get_scope("environment/light") if sim.domain else None
+    sim.scheduler.insert_event(light_increase_event, trigger_time=60.0, scope=light_scope)
 
     sim.print_status()
 

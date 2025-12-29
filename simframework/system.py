@@ -9,6 +9,46 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
+import datetime
+
+
+@dataclass
+class ProcessIO:
+    """Input or output for a process: a kind (from taxonomy) with quantity and rate interval."""
+
+    kind: Any  # Typically a Scope from taxonomy, but can be any hashable identifier
+    quantity: float  # Base amount per interval (e.g., 10.0)
+    interval: datetime.timedelta  # Rate interval (e.g., per hour)
+
+    def quantity_per_second(self) -> float:
+        """Return the rate in units per second."""
+        total_seconds = self.interval.total_seconds()
+        if total_seconds <= 0:
+            return 0.0
+        return self.quantity / total_seconds
+
+
+@dataclass
+class Process:
+    """A process: transforms inputs to outputs at a specified efficiency over time.
+
+    A process can require one or more agents to execute. Efficiency represents the
+    fraction of input energy/material that is converted to useful output (0.0 to 1.0).
+    """
+
+    name: str
+    inputs: List[ProcessIO] = field(default_factory=list)
+    outputs: List[ProcessIO] = field(default_factory=list)
+    efficiency: float = 1.0  # Default: no loss (0.0 to 1.0)
+    required_agents: List[str] = field(default_factory=list)  # Agent ids or names
+
+
+@dataclass
+class Store:
+    """A store of some resource: a kind (from taxonomy) with current quantity."""
+
+    kind: Any  # Typically a Scope, but can be any hashable identifier
+    quantity: float = 0.0
 
 
 @dataclass
@@ -103,11 +143,93 @@ class SystemInstance:
     children: List["SystemInstance"] = field(default_factory=list)
     labels: List[str] = field(default_factory=list)
     is_location: bool = False
+    processes: List[Process] = field(default_factory=list)
+    stores: List[Store] = field(default_factory=list)
 
     def add_child(self, child: "SystemInstance") -> None:
         """Attach an existing child instance."""
         child.parent = self
         self.children.append(child)
+
+    def add_process(self, process: Process) -> None:
+        """Add a process to this system."""
+        self.processes.append(process)
+
+    def aggregate_processes(self, include_children: bool = True) -> List[Process]:
+        """Return all processes in this system (and optionally all children recursively)."""
+        result = list(self.processes)
+        if include_children:
+            for child in self.children:
+                result.extend(child.aggregate_processes(include_children=True))
+        return result
+
+    def aggregate_stores(self, include_children: bool = True) -> Dict[Any, float]:
+        """Return aggregated stores as {kind: total_quantity} (recursively if include_children)."""
+        result: Dict[Any, float] = {}
+        # Add this system's stores
+        for store in self.stores:
+            result[store.kind] = result.get(store.kind, 0.0) + store.quantity
+        # Add children's stores recursively
+        if include_children:
+            for child in self.children:
+                child_stores = child.aggregate_stores(include_children=True)
+                for kind, qty in child_stores.items():
+                    result[kind] = result.get(kind, 0.0) + qty
+        return result
+
+    def add_store(self, kind: Any, quantity: float = 0.0) -> None:
+        """Add or update a store of a given kind."""
+        for store in self.stores:
+            if store.kind == kind:
+                store.quantity += quantity
+                return
+        self.stores.append(Store(kind=kind, quantity=quantity))
+
+    def get_store(self, kind: Any) -> Optional[Store]:
+        """Retrieve a store by kind."""
+        for store in self.stores:
+            if store.kind == kind:
+                return store
+        return None
+
+    def execute_process(self, process: Process, duration: datetime.timedelta) -> bool:
+        """Execute a process over a duration, consuming inputs and producing outputs.
+
+        Returns True if execution succeeded, False if insufficient inputs.
+
+        The process:
+        1. Checks if all required inputs are available in stores
+        2. Consumes inputs at the specified rate
+        3. Produces outputs at (input * efficiency) rate
+        """
+        # Calculate total quantities needed/produced for the duration
+        duration_seconds = duration.total_seconds()
+        if duration_seconds <= 0:
+            return False
+
+        # Check availability of all inputs
+        for io in process.inputs:
+            rate_per_sec = io.quantity_per_second()
+            needed = rate_per_sec * duration_seconds
+            store = self.get_store(io.kind)
+            if store is None or store.quantity < needed:
+                return False  # Insufficient input
+
+        # Consume inputs
+        for io in process.inputs:
+            rate_per_sec = io.quantity_per_second()
+            consumed = rate_per_sec * duration_seconds
+            store = self.get_store(io.kind)
+            if store is not None:
+                store.quantity -= consumed
+
+        # Produce outputs (applying efficiency)
+        for io in process.outputs:
+            rate_per_sec = io.quantity_per_second()
+            produced = (rate_per_sec * duration_seconds) * process.efficiency
+            self.add_store(io.kind, produced)
+
+        return True
 
     def iter_ancestors(self) -> Iterable["SystemInstance"]:
         current = self.parent
@@ -193,6 +315,9 @@ class SystemInstance:
         if not isinstance(other, SystemInstance):
             return False
         return (self.template.name, self.id) == (other.template.name, other.id)
+
+
+__all__ = ["PropertySpec", "SystemTemplate", "SystemInstance", "Process", "ProcessIO", "Store", "Agent", "AgentTemplate"]
 
 
 @dataclass
