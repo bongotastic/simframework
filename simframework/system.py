@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 import datetime
+from simframework.entity import Entity
 
 
 @dataclass
@@ -30,17 +31,20 @@ class ProcessIO:
 
 @dataclass
 class Process:
-    """A process: transforms inputs to outputs at a specified efficiency over time.
+    """A process template with entity containers for inputs, outputs, and tooling.
 
-    A process can require one or more agents to execute. Efficiency represents the
-    fraction of input energy/material that is converted to useful output (0.0 to 1.0).
+    A process defines:
+    - inputs: Entity container for input materials/resources required
+    - outputs: Entity container for output products created
+    - tooling: Entity container for tools/equipment needed
+    - completion_time: Duration of the process in hours (float)
     """
 
     name: str
-    inputs: List[ProcessIO] = field(default_factory=list)
-    outputs: List[ProcessIO] = field(default_factory=list)
-    efficiency: float = 1.0  # Default: no loss (0.0 to 1.0)
-    required_agents: List[str] = field(default_factory=list)  # Agent ids or names
+    inputs: Entity = field(default_factory=lambda: Entity(identifier="process_inputs"))
+    outputs: Entity = field(default_factory=lambda: Entity(identifier="process_outputs"))
+    tooling: Entity = field(default_factory=lambda: Entity(identifier="process_tooling"))
+    completion_time: float = 1.0  # Process duration in hours
 
 
 @dataclass

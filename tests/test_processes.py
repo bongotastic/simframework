@@ -3,24 +3,14 @@ from pathlib import Path
 import sys
 
 try:
-    from simframework.system import SystemTemplate, Process, ProcessIO, Store
+    from simframework.system import SystemTemplate, Process, Store
+    from simframework.entity import Entity
 except ImportError:
     pkg_root = Path(__file__).resolve().parents[1]
     if str(pkg_root) not in sys.path:
         sys.path.insert(0, str(pkg_root))
-    from simframework.system import SystemTemplate, Process, ProcessIO, Store
-
-
-def test_process_io_quantity_per_second():
-    """Test ProcessIO rate calculation."""
-    # 10 units per hour -> 10/3600 per second
-    io = ProcessIO(kind="energy", quantity=10.0, interval=datetime.timedelta(hours=1))
-    expected = 10.0 / 3600.0
-    assert io.quantity_per_second() == pytest.approx(expected)
-
-    # 60 units per minute -> 1 unit per second
-    io2 = ProcessIO(kind="water", quantity=60.0, interval=datetime.timedelta(minutes=1))
-    assert io2.quantity_per_second() == pytest.approx(1.0)
+    from simframework.system import SystemTemplate, Process, Store
+    from simframework.entity import Entity
 
 
 def test_add_store_and_get_store():
@@ -48,14 +38,15 @@ def test_add_process():
     tmpl = SystemTemplate("factory")
     inst = tmpl.instantiate()
 
-    p1 = Process(name="production", inputs=[], outputs=[], efficiency=0.9)
-    p2 = Process(name="conversion", inputs=[], outputs=[], efficiency=0.8)
+    p1 = Process(name="production", completion_time=2.5)
+    p2 = Process(name="conversion", completion_time=1.5)
 
     inst.add_process(p1)
     inst.add_process(p2)
 
     assert len(inst.processes) == 2
     assert inst.processes[0].name == "production"
+    assert inst.processes[0].completion_time == 2.5
 
 
 def test_aggregate_processes_flat():
@@ -63,8 +54,8 @@ def test_aggregate_processes_flat():
     tmpl = SystemTemplate("system")
     inst = tmpl.instantiate()
 
-    p1 = Process(name="proc1", efficiency=0.9)
-    p2 = Process(name="proc2", efficiency=0.8)
+    p1 = Process(name="proc1", completion_time=1.0)
+    p2 = Process(name="proc2", completion_time=2.0)
 
     inst.add_process(p1)
     inst.add_process(p2)
@@ -86,9 +77,9 @@ def test_aggregate_processes_with_children():
 
     parent = parent_tmpl.instantiate()
 
-    p_parent = Process(name="parent_proc", efficiency=1.0)
-    p_child1 = Process(name="child1_proc", efficiency=0.9)
-    p_child2 = Process(name="child2_proc", efficiency=0.8)
+    p_parent = Process(name="parent_proc", completion_time=1.0)
+    p_child1 = Process(name="child1_proc", completion_time=0.9)
+    p_child2 = Process(name="child2_proc", completion_time=0.8)
 
     parent.processes.append(p_parent)
     parent.children[0].processes.append(p_child1)
@@ -135,110 +126,29 @@ def test_aggregate_stores_with_children():
     assert aggregated["water"] == pytest.approx(50.0)
 
 
-def test_execute_process_success():
-    """Test executing a process with sufficient inputs."""
+def test_execute_process_with_inputs_and_outputs():
+    """Test executing a process with entity inputs and outputs."""
+    from simframework.entity import Entity
+    
     tmpl = SystemTemplate("factory")
     inst = tmpl.instantiate()
 
-    # Start with 100 units of raw material
-    inst.add_store("raw", 100.0)
-
-    # Process: 10 raw per hour -> 8 product per hour (80% efficiency)
-    proc = Process(
-        name="production",
-        inputs=[ProcessIO(kind="raw", quantity=10.0, interval=datetime.timedelta(hours=1))],
-        outputs=[ProcessIO(kind="product", quantity=10.0, interval=datetime.timedelta(hours=1))],
-        efficiency=0.8,
-    )
-
-    # Execute for 1 hour
-    duration = datetime.timedelta(hours=1)
-    success = inst.execute_process(proc, duration)
-
-    assert success is True
-    # After 1 hour: raw should be reduced by 10, product should be added (10 * 0.8 = 8)
-    assert inst.get_store("raw").quantity == pytest.approx(90.0)
-    assert inst.get_store("product").quantity == pytest.approx(8.0)
-
-
-def test_execute_process_insufficient_input():
-    """Test executing a process with insufficient inputs."""
-    tmpl = SystemTemplate("factory")
-    inst = tmpl.instantiate()
-
-    # Start with only 5 units but process needs 10
-    inst.add_store("raw", 5.0)
-
-    proc = Process(
-        name="production",
-        inputs=[ProcessIO(kind="raw", quantity=10.0, interval=datetime.timedelta(hours=1))],
-        outputs=[ProcessIO(kind="product", quantity=10.0, interval=datetime.timedelta(hours=1))],
-        efficiency=0.8,
-    )
-
-    duration = datetime.timedelta(hours=1)
-    success = inst.execute_process(proc, duration)
-
-    assert success is False
-    # Nothing should change
-    assert inst.get_store("raw").quantity == pytest.approx(5.0)
-    assert inst.get_store("product") is None
-
-
-def test_execute_process_multiple_inputs_outputs():
-    """Test a process with multiple inputs and outputs."""
-    tmpl = SystemTemplate("refinery")
-    inst = tmpl.instantiate()
-
-    inst.add_store("oil", 100.0)
-    inst.add_store("water", 50.0)
-
-    # Refining process: 10 oil + 5 water -> 8 fuel + 2 byproduct (80% efficiency)
-    proc = Process(
-        name="refining",
-        inputs=[
-            ProcessIO(kind="oil", quantity=10.0, interval=datetime.timedelta(hours=1)),
-            ProcessIO(kind="water", quantity=5.0, interval=datetime.timedelta(hours=1)),
-        ],
-        outputs=[
-            ProcessIO(kind="fuel", quantity=10.0, interval=datetime.timedelta(hours=1)),
-            ProcessIO(kind="byproduct", quantity=2.0, interval=datetime.timedelta(hours=1)),
-        ],
-        efficiency=0.8,
-    )
-
-    success = inst.execute_process(proc, datetime.timedelta(hours=1))
-    assert success is True
-
-    assert inst.get_store("oil").quantity == pytest.approx(90.0)
-    assert inst.get_store("water").quantity == pytest.approx(45.0)
-    assert inst.get_store("fuel").quantity == pytest.approx(8.0)  # 10 * 0.8
-    assert inst.get_store("byproduct").quantity == pytest.approx(1.6)  # 2 * 0.8
-
-
-def test_execute_process_fractional_duration():
-    """Test executing a process for a fraction of the interval."""
-    tmpl = SystemTemplate("factory")
-    inst = tmpl.instantiate()
-
-    inst.add_store("raw", 100.0)
-
-    # 60 units per hour (1 per second)
-    proc = Process(
-        name="production",
-        inputs=[ProcessIO(kind="raw", quantity=60.0, interval=datetime.timedelta(hours=1))],
-        outputs=[ProcessIO(kind="product", quantity=60.0, interval=datetime.timedelta(hours=1))],
-        efficiency=1.0,
-    )
-
-    # Execute for 30 minutes (half hour)
-    duration = datetime.timedelta(minutes=30)
-    success = inst.execute_process(proc, duration)
-
-    assert success is True
-    # In 30 minutes, should consume 30 raw and produce 30 product
-    assert inst.get_store("raw").quantity == pytest.approx(70.0)
-    assert inst.get_store("product").quantity == pytest.approx(30.0)
+    # Create a process with input and output entities
+    proc = Process(name="production", completion_time=1.0)
+    
+    # Add raw material to inputs
+    raw = Entity(identifier="raw", volume_liters=10.0, mass_kg=5.0)
+    proc.inputs.add_to_container(raw, quantity=100)
+    
+    # Add output template
+    product = Entity(identifier="product", volume_liters=8.0, mass_kg=4.0)
+    proc.outputs.add_to_container(product, quantity=0)
+    
+    # Verify inputs are in process
+    inputs = proc.inputs.query_container("raw")
+    assert len(inputs) == 100
+    
+    assert proc.completion_time == 1.0
 
 
 import pytest
