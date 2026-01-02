@@ -1,0 +1,142 @@
+# Source: 
+#   - Capitulare de villis (c. late 8th C.) - Tool requirements
+#   - Archaeological assemblages (Dorestad, Haithabu) - Material composition
+#   - Experimental Archaeology - Processing steps (e.g., splitting vs sawing)
+
+name: Frankish Estate Supply Chain
+
+# --- TIER 1 & 2: NODES ---
+scopes:
+  # TIER 1: RAW RESOURCES (Extraction)
+  - path: materials/resource/timber
+  - path: materials/resource/timber/elastic       # Ash, Hickory (Shock absorption)
+  - path: materials/resource/timber/structural    # Oak, Elm (Durability)
+  - path: materials/resource/timber/fine          # Boxwood, Fruitwood (Turning/Carving)
+  - path: materials/resource/timber/coppice       # Hazel, Willow (Flexible shoots)
+  - path: materials/resource/timber/resin         # Pine pitch
+
+  - path: materials/resource/mineral
+  - path: materials/resource/mineral/iron_ore     # Bog iron / Rock ore
+  - path: materials/resource/mineral/stone        # Basalt (Quern), Flint
+  - path: materials/resource/mineral/clay         # River clay
+
+  - path: materials/resource/animal
+  - path: materials/resource/animal/hide          # Cattle, Goat
+  - path: materials/resource/animal/bone_horn     # Antler, Bone
+  - path: materials/resource/animal/fiber         # Wool
+  - path: materials/resource/animal/wool          # Raw wool (fleece)
+
+  # Plant resources for textiles
+  - path: materials/resource/plant
+  - path: materials/resource/plant/flax
+  - path: materials/resource/plant/flax/stalks    # Flax stalks for processing into fiber
+
+  # TIER 2: COARSE INTERMEDIATES (Processing)
+  # Wood Stock
+  - path: materials/intermediate/wood_stock
+  - path: materials/intermediate/wood_stock/billet      # Split/hewn logs (Handles, Spokes)
+  - path: materials/intermediate/wood_stock/plank       # Radially split boards (Construction)
+  - path: materials/intermediate/wood_stock/withe       # Green soaked rods (Binding/Hoops)
+  - path: materials/intermediate/wood_stock/block       # Seasoned heartwood chunks (Hubs/Bowls)
+
+  # Metal Stock
+  - path: materials/intermediate/metal_stock
+  - path: materials/intermediate/metal_stock/wrought_iron  # Low carbon, ductile (Hardware)
+  - path: materials/intermediate/metal_stock/steely_iron   # Carburized/Bloomery steel (Edges)
+
+  # Textile & Leather
+  - path: materials/intermediate/textile_leather
+  - path: materials/intermediate/textile_leather/cured     # Tanned/Tawed (Flexible)
+  - path: materials/intermediate/textile_leather/rawhide   # Untanned (Hard/Shrinking)
+  - path: materials/intermediate/textile
+    - path: materials/intermediate/textile/thread    # Spun thread (linen/woolen)
+    - path: materials/intermediate/textile/cloth     # Woven cloth (linen, woolen)
+    - path: materials/intermediate/textile/thread/linen
+    - path: materials/intermediate/textile/thread/wool
+    - path: materials/intermediate/textile/thread/string
+    - path: materials/intermediate/textile/thread/string/linen
+    - path: materials/intermediate/textile/thread/twine
+    - path: materials/intermediate/textile/thread/twine/linen
+    - path: materials/intermediate/textile/thread/twine/wool
+    - path: materials/intermediate/textile/cloth/linen
+    - path: materials/intermediate/textile/cloth/wool
+    - path: materials/intermediate/textile/cloth/wool/felted
+    - path: materials/intermediate/textile/cloth/wool/woven
+  
+  # Ceramic & Stone
+  - path: materials/intermediate/ceramic_stone
+  - path: materials/intermediate/ceramic_stone/dressed     # Roughly shaped stone
+  - path: materials/intermediate/ceramic_stone/fired       # Pottery/Weights
+  # Fasteners / Rope variants
+  - path: materials/fastener/rope
+  - path: materials/fastener/rope/hemp
+  - path: materials/fastener/rope/cord
+  - path: materials/fastener/rope/sinew
+  - path: materials/fastener/rope/gut
+
+# --- TIER 3: EDGES (Assembly) ---
+fabrication:
+  # -- HAND TOOLS --
+  - target: goods/tools/handtools/hammer
+    components:
+      - material: materials/intermediate/metal_stock/wrought_iron # Eye/Body
+      - material: materials/intermediate/metal_stock/steely_iron  # Face
+      - material: materials/intermediate/wood_stock/billet        # Haft (Elastic)
+
+  - target: goods/tools/handtools/axe
+    components:
+      - material: materials/intermediate/metal_stock/steely_iron
+      - material: materials/intermediate/wood_stock/billet        # Haft (Elastic)
+
+  - target: goods/tools/handtools/knife
+    components:
+      - material: materials/intermediate/metal_stock/steely_iron  # Pattern welded
+      - material: materials/intermediate/wood_stock/block         # Grip (Fine) OR Bone/Horn
+
+  - target: goods/tools/handtools/plane
+    components:
+      - material: materials/intermediate/wood_stock/block         # Body (Structural/Dense)
+      - material: materials/intermediate/metal_stock/steely_iron  # Blade
+
+  # -- AGRICULTURE --
+  - target: goods/tools/agriculture/scythe
+    components:
+      - material: materials/intermediate/metal_stock/steely_iron  # Blade
+      - material: materials/intermediate/wood_stock/withe         # Snath (Willow) OR Billet (Ash)
+      - material: materials/intermediate/metal_stock/wrought_iron # Mounting rings
+
+  - target: goods/tools/agriculture/plow
+    components:
+      - material: materials/intermediate/wood_stock/plank         # Beam (Structural)
+      - material: materials/intermediate/metal_stock/wrought_iron # Share (Wear plate)
+      - material: materials/intermediate/metal_stock/steely_iron  # Coulter (Cutter)
+
+  - target: goods/tools/agriculture/flail
+    components:
+      - material: materials/intermediate/wood_stock/billet        # Handle
+      - material: materials/intermediate/wood_stock/block         # Beater (Dense Blackthorn)
+      - material: materials/intermediate/textile_leather/cured    # Linkage (Eel skin/Leather)
+
+  # -- TRANSPORT --
+  - target: goods/tools/transport/vehicle/wagon
+    components:
+      - material: materials/intermediate/wood_stock/block         # Hubs (Elm)
+      - material: materials/intermediate/wood_stock/billet        # Spokes (Oak) & Felloes (Ash)
+      - material: materials/intermediate/metal_stock/wrought_iron # Tires/Strakes & Axle clout
+      - material: materials/intermediate/wood_stock/plank         # Body
+
+  - target: goods/tools/transport/tack/yoke
+    components:
+      - material: materials/intermediate/wood_stock/block         # Beam (Carved Willow)
+      - material: materials/intermediate/wood_stock/withe         # Bows
+
+  # -- CONTAINERS --
+  - target: goods/containers/storage/barrel
+    components:
+      - material: materials/intermediate/wood_stock/plank         # Staves (Oak)
+      - material: materials/intermediate/wood_stock/withe         # Hoops (Hazel)
+
+  - target: goods/containers/transport/wineskin
+    components:
+      - material: materials/intermediate/textile_leather/cured    # Whole hide
+      - material: materials/resource/timber/resin                 # Pitch sealant
