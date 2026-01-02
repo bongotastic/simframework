@@ -77,9 +77,44 @@ scopes:
   - path: land/built-up/thoroughfare/bridge
   - path: land/built-up/thoroughfare/gathering_place
 
+  # legal designations
+  - path: land/tenure
+  - path: land/tenure/demesne  # The Lord's direct holdings
+  - path: land/tenure/mansus   # Peasant holdings (taxable)
+  - path: land/tenure/glebe    # Church holdings (tithe-exempt)
+  - path: land/tenure/commons  # Shared grazing/woodland rights
+
   # --- ANIMALS (Domestic and Wild) ---
   - path: animals
   - path: animals/domestic
+  # Humans (moved here from animals/domestic/human)
+  - path: animals/human
+  - path: animals/human/male
+  - path: animals/human/male/infant
+  - path: animals/human/male/child
+  - path: animals/human/male/adolescent
+  - path: animals/human/male/apprentice
+  - path: animals/human/male/adult
+  - path: animals/human/male/mature
+  - path: animals/human/male/elder
+  - path: animals/human/female
+  - path: animals/human/female/infant
+  - path: animals/human/female/child
+  - path: animals/human/female/adolescent
+  - path: animals/human/female/apprentice
+  - path: animals/human/female/adult
+  - path: animals/human/female/mature
+  - path: animals/human/female/elder
+
+  # humans moved to animals/human
+  # Human social status categories
+  - path: animals/human/status
+  - path: animals/human/status/noble
+  - path: animals/human/status/knight
+  - path: animals/human/status/household
+  - path: animals/human/status/freeman
+  - path: animals/human/status/serf
+  - path: animals/human/status/slave
 
   # Cattle (including oxen kept for draft)
   - path: animals/domestic/cattle
@@ -311,6 +346,9 @@ scopes:
   - path: tasks/fisher/extraction
 
   # Additional household / domestic roles
+  - path: tasks/lady
+  - path: tasks/lady/administrative
+
   - path: tasks/chamberlain
   - path: tasks/chamberlain/administrative
 
@@ -351,6 +389,57 @@ scopes:
   - path: tasks/kennel_master/production
 
 # tools and supply chain
+
+  # --- STRUCTURES (manorial estate buildings and works) ---
+  - path: structure
+  - path: structure/manor_great_hall
+  - path: structure/chapel_church
+  - path: structure/priest_house
+  - path: structure/steward_house
+  - path: structure/granary
+  - path: structure/byre_cowhouse
+  - path: structure/stable_sumpter_house
+  - path: structure/pigsty
+  - path: structure/sheepfold
+  - path: structure/bakehouse
+  - path: structure/brewhouse
+  - path: structure/mill
+  - path: structure/mill/watermill
+  - path: structure/mill/hand_or_animal_mill
+  - path: structure/miller_house
+  - path: structure/smithy_forge
+  - path: structure/carpenter_workshop
+  - path: structure/cooperage
+  - path: structure/tannery
+  - path: structure/storehouse
+  - path: structure/barn_hay_barn
+  - path: structure/tithe_barn     # Distinct from regular barn; for tax storage
+  - path: structure/cart_shed
+  - path: structure/dovecote
+  - path: structure/kennels
+  - path: structure/apiary
+  - path: structure/fishpond
+  - path: structure/fishhouse
+  - path: structure/weir
+  - path: structure/millpond_leat_sluice
+  - path: structure/lime_kiln
+  - path: structure/charcoal_clamp
+  - path: structure/gatehouse_toll
+  - path: structure/worker_cottage
+  - path: structure/longhouse
+  - path: structure/cellar_storage
+  - path: structure/watch_tower
+  - path: structure/oven_house
+  - path: structure/butchery
+  - path: structure/forge_yard
+  - path: structure/fodder_shed
+  - path: structure/pond_control_works
+  - path: structure/communal_threshing_floor
+  - path: structure/midden
+  - path: structure/well
+  - path: structure/latrine
+  - path: structure/dye_works
+  - path: structure/retting_pond # Specific water feature for rotting flax/hemp
   # --- TOOLS (Preserved & Expanded) ---
   - path: goods/tools
   
@@ -517,6 +606,11 @@ scopes:
   - path: materials/fuel/charcoal
   - path: materials/fuel/coal
 
+  # Water materials
+  - path: materials/water
+  - path: materials/water/drinking_water
+  - path: materials/water/dirty_water
+
   # TIER 1: RAW RESOURCES (Extraction)
   - path: materials/resource/timber
   - path: materials/resource/timber/elastic       # Ash, Hickory (Shock absorption)
@@ -535,6 +629,12 @@ scopes:
   - path: materials/resource/animal/bone_horn     # Antler, Bone
   - path: materials/resource/animal/fiber         # Wool
   - path: materials/resource/animal/wool          # Raw wool (fleece)
+
+  # Waste resources (fertility sources and ash)
+  - path: materials/resource/waste
+  - path: materials/resource/waste/manure_animal
+  - path: materials/resource/waste/night_soil    # Human waste
+  - path: materials/resource/waste/ash           # Potash source
 
   # Plant resources for textiles
   - path: materials/resource/plant
@@ -580,6 +680,11 @@ scopes:
   - path: materials/intermediate/ceramic_stone
   - path: materials/intermediate/ceramic_stone/dressed     # Roughly shaped stone
   - path: materials/intermediate/ceramic_stone/fired       # Pottery/Weights
+  # Dye intermediates (processed extracts from dye-plants)
+  - path: materials/intermediate/dye
+  - path: materials/intermediate/dye/woad
+  - path: materials/intermediate/dye/madder
+  - path: materials/intermediate/dye/weld
   # --- PLANT TAXONOMY (economic species for the Demesne) ---
   - path: plant
 
@@ -700,5 +805,29 @@ scopes:
   - path: plant/herb/herbal_medicinals
   - path: plant/herb/herbal_medicinals/dried
   - path: plant/herb/herbal_medicinals/essential_oils
+
+  # Natural dyes
+  - path: plant/dye
+  - path: plant/dye/woad
+  - path: plant/dye/woad/leaf
+  - path: plant/dye/woad/woad_ball
+  - path: plant/dye/madder
+  - path: plant/dye/madder/root
+  - path: plant/dye/madder/root/dried
+  - path: plant/dye/weld
+  - path: plant/dye/weld/leaf
+  - path: plant/dye/weld/flower
+
+  # Link plant species to produced intermediate dye materials
+  - path: plant/dye/woad
+  - path: plant/dye/madder
+  - path: plant/dye/weld
+
+  # Time taxonomy (seasons)
+  - path: time
+  - path: time/season/winter
+  - path: time/season/spring_sowing
+  - path: time/season/summer_growing
+  - path: time/season/harvest
 
 systems: []
