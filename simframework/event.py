@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     # Avoid runtime import cycles; used only for type checking and hints.
     from .scope import Scope
-    from .system import SystemInstance
+    from .entity import Entity
 
 
 @dataclass
@@ -21,7 +21,8 @@ class Event:
     data: Dict[str, Any] = field(default_factory=dict)
     timespan: datetime.timedelta = field(default_factory=lambda: datetime.timedelta(0))
     scope: Optional["Scope"] = None
-    system: Optional["SystemInstance"] = None
+    # `system` is retained for backward compatibility but holds an `Entity`.
+    system: Optional["Entity"] = None
 
     def __repr__(self) -> str:  # pragma: no cover - trivial
         parts = [f"data={self.data!r}", f"timespan={self.timespan}"]

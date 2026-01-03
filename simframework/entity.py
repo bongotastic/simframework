@@ -1,6 +1,7 @@
 """Basic entity abstraction for simulation participants."""
 from typing import Any, Optional, Dict, List, Union
 from dataclasses import dataclass, field
+import datetime
 import math
 from copy import deepcopy
 
@@ -25,6 +26,11 @@ class Entity:
     ablative: float = 0.0  # 0-1 scale (0 = no degradation, 1 = completely ablated)
     # contents: taxonomy name -> list of Entity instances
     contents: Dict[str, List["Entity"]] = field(default_factory=dict)
+    # properties: maps taxonomy full-path (string) -> arbitrary value
+    properties: Dict[str, Any] = field(default_factory=dict)
+    # internal clock stored as a datetime; initialized to epoch (0)
+    internal_clock: datetime.datetime = field(default_factory=lambda: datetime.datetime.fromtimestamp(0))
+    
 
     def __post_init__(self) -> None:
         """Validate reliability (int), volume, mass, and ablative values are within bounds and types."""
@@ -36,6 +42,17 @@ class Entity:
             raise ValueError(f"mass_kg must be a non-negative number; got {self.mass_kg}")
         if not 0.0 <= self.ablative <= 1.0:
             raise ValueError(f"ablative must be between 0 and 1; got {self.ablative}")
+
+        # Validate properties dict keys are strings (full-path keys)
+        if not isinstance(self.properties, dict):
+            raise TypeError("properties must be a dict mapping strings to values")
+        for k in list(self.properties.keys()):
+            if not isinstance(k, str):
+                raise TypeError(f"property keys must be strings; got {type(k)}")
+
+        # Validate internal clock is a datetime
+        if not isinstance(self.internal_clock, datetime.datetime):
+            raise TypeError("internal_clock must be a datetime.datetime")
 
     def add_to_container(self, entity_or_list: Union["Entity", List["Entity"]], quantity: int = 1) -> None:
         """Add an Entity or list of Entities into this entity's contents.
@@ -124,3 +141,73 @@ class Entity:
             True if the entity is functional, False otherwise.
         """
         return self.reliability > 0 and self.ablative < 1.0
+
+    def set_property(self, key: str, value: Any) -> None:
+        """Set a property on this entity.
+
+        Args:
+            key: property name (must be a string)
+            value: any JSON-serializable or domain-specific value
+        """
+        if not isinstance(key, str):
+            raise TypeError("property key must be a string")
+        self.properties[key] = value
+
+    def set_internal_clock(self, dt: datetime.datetime) -> None:
+        """Set the entity's internal clock (datetime)."""
+        if not isinstance(dt, datetime.datetime):
+            raise TypeError("internal clock must be a datetime.datetime")
+        self.internal_clock = dt
+
+    def get_internal_clock(self) -> datetime.datetime:
+        """Return the entity's internal clock as a datetime."""
+        return self.internal_clock
+
+    def unset_property(self, key: str) -> None:
+        """Remove a property from this entity if present."""
+        if not isinstance(key, str):
+            raise TypeError("property key must be a string")
+        self.properties.pop(key, None)
+
+    def has_property(self, key: str) -> bool:
+        """Return True if the entity has a property named `key`."""
+        if not isinstance(key, str):
+            raise TypeError("property key must be a string")
+        return key in self.properties
+
+
+@dataclass
+class Person(Entity):
+    """A person in the simulation with skill/attribute levels.
+
+    `attributes` maps taxonomy identifier strings (e.g. "attributes/skill/smithing")
+    to integer levels (e.g. 0..10). Validation ensures keys are strings and values
+    are non-negative integers.
+    """
+
+    attributes: Dict[str, int] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # Validate base Entity fields first
+        super().__post_init__()
+
+        if not isinstance(self.attributes, dict):
+            raise TypeError("attributes must be a dict mapping taxonomy strings to integer levels")
+
+        for k, v in list(self.attributes.items()):
+            if not isinstance(k, str):
+                raise TypeError(f"attribute keys must be strings (taxonomy ids); got {type(k)}")
+            if not isinstance(v, int) or v < 0:
+                raise ValueError(f"attribute levels must be non-negative integers; got {v} for {k}")
+
+    def get_attribute(self, key: str) -> int:
+        """Return the integer level for `key`, or 0 if not present."""
+        return int(self.attributes.get(key, 0))
+
+    def set_attribute(self, key: str, level: int) -> None:
+        """Set the attribute `key` to integer `level` (must be non-negative)."""
+        if not isinstance(key, str):
+            raise TypeError("attribute key must be a string")
+        if not isinstance(level, int) or level < 0:
+            raise ValueError("attribute level must be a non-negative integer")
+        self.attributes[key] = level

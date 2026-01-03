@@ -1,0 +1,15 @@
+- path: process/nature/grow_resource
+  name: grow_resource
+  description: "Simple resource growth process for Generic domain"
+  outputs:
+    - path: resources/basic_resource
+      quantity: 10
+      interval: 1h
+
+- path: process/production/consume_resource
+  name: consume_resource
+  description: "Consumes basic resource to produce nothing (test load)"
+  inputs:
+    - path: resources/basic_resource
+      quantity: 5
+      interval: 1h

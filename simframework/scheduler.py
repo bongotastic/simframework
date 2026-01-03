@@ -19,7 +19,7 @@ except ImportError:
 
 if TYPE_CHECKING:
     from .scope import Scope
-    from .system import SystemInstance
+    from .entity import Entity
 
 
 class Scheduler:
@@ -90,7 +90,7 @@ class Scheduler:
         self._counter += 1
         return run_at, self._counter - 1
 
-    def insert_event(self, event: Event, trigger_time: Union[datetime.datetime, float, datetime.timedelta], *, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None) -> Tuple[datetime.datetime, int]:
+    def insert_event(self, event: Event, trigger_time: Union[datetime.datetime, float, datetime.timedelta], *, scope: Optional["Scope"] = None, system: Optional["Entity"] = None) -> Tuple[datetime.datetime, int]:
         """Insert a pre-built `Event` into the scheduler.
 
         - `event`: an instance of `Event`.
@@ -128,7 +128,7 @@ class Scheduler:
         self._counter += 1
         return run_at, self._counter - 1
 
-    def pop_event(self, scope: Optional["Scope"] = None, *, system: Optional["SystemInstance"] = None, include_descendants: bool = False) -> Optional[Event]:
+    def pop_event(self, scope: Optional["Scope"] = None, *, system: Optional["Entity"] = None, include_descendants: bool = False) -> Optional[Event]:
         """Remove and return the next scheduled Event.
 
         If `scope` is provided, the scheduler searches chronologically for the
@@ -160,10 +160,9 @@ class Scheduler:
 
             matches_system = True
             if system is not None:
-                if include_descendants:
-                    matches_system = _is_system_or_descendant(event.system, system)
-                else:
-                    matches_system = event.system == system
+                # Entities are matched by identity equality. Hierarchical
+                # descendant matching was removed along with systems/agents.
+                matches_system = event.system == system
 
             if matches_scope and matches_system:
                 found_event = event
@@ -176,14 +175,14 @@ class Scheduler:
 
         return found_event
 
-    def pop_event_for_system(self, system: "SystemInstance", *, include_descendants: bool = False) -> Optional[Event]:
+    def pop_event_for_system(self, system: "Entity", *, include_descendants: bool = False) -> Optional[Event]:
         """Convenience method: pop next event for a specific `system`.
 
         This searches chronologically for the next event whose `Event.system`
         equals `system`. When `include_descendants` is True, descendant systems
         also match.
         """
-        return self.pop_event(system=system, include_descendants=include_descendants)
+        return self.pop_event(system=system, include_descendants=False)
 
     def step(self) -> Optional[Event]:
         if not self._queue:
@@ -210,7 +209,7 @@ class Scheduler:
         if until is not None and self._time < until:
             self._time = until
 
-    def peek_events(self, scope: Optional["Scope"] = None, system: Optional["SystemInstance"] = None, limit: Optional[int] = None, *, include_descendants: bool = True) -> List[Tuple[datetime.datetime, Event]]:
+    def peek_events(self, scope: Optional["Scope"] = None, system: Optional["Entity"] = None, limit: Optional[int] = None, *, include_descendants: bool = True) -> List[Tuple[datetime.datetime, Event]]:
         """Look ahead at upcoming events without modifying the queue.
 
         Returns a list of (run_at, Event) tuples in chronological order, optionally filtered
@@ -242,9 +241,8 @@ class Scheduler:
 
             # System filtering supports descendant matching when requested
             if system is not None:
-                if not include_descendants or not _is_system_or_descendant(event.system, system):
-                    if event.system != system:
-                        continue
+                if event.system != system:
+                    continue
 
             result.append((run_at, event))
 
@@ -255,13 +253,5 @@ class Scheduler:
         return result
 
 
-def _is_system_or_descendant(candidate: Optional["SystemInstance"], target: "SystemInstance") -> bool:
-    """Return True if candidate is target or a descendant of target."""
-    if candidate is None:
-        return False
-    current = candidate
-    while current is not None:
-        if current == target:
-            return True
-        current = current.parent  # type: ignore[attr-defined]
-    return False
+# Hierarchical system/descendant matching and SystemInstance types were
+# removed when systems/agents were deleted; identity equality is used above.

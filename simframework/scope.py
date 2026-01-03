@@ -14,16 +14,22 @@ from typing import Any, Dict, List, Optional, Set
 class Scope:
     """A scope representing a category in a taxonomy.
 
-    A scope can have a parent scope, creating a hierarchy. Scopes can also
-    carry metadata via properties for domain-specific information.
-    
-    Scopes can also reference processes that apply to them (by name).
+    A scope can have a parent scope and children scopes, creating a tree hierarchy.
+    Scopes can also carry metadata via properties for domain-specific information.
     """
 
     name: str
     parent: Optional[Scope] = None
     properties: Dict[str, Any] = field(default_factory=dict)
-    processes: List[str] = field(default_factory=list)  # Process names
+    children: Set[Scope] = field(default_factory=set)
+
+    def add_child(self, child: "Scope") -> None:
+        """Add a child scope to this scope's children set."""
+        self.children.add(child)
+
+    def get_children(self) -> List["Scope"]:
+        """Return a sorted list of child scopes by name."""
+        return sorted(self.children, key=lambda s: s.name)
 
     def full_path(self) -> str:
         """Return the full hierarchical path of this scope (e.g., 'biology/organism/growth')."""
@@ -53,7 +59,8 @@ class Scope:
         return 1 + self.parent.depth()
 
     def __repr__(self) -> str:
-        return f"Scope(path='{self.full_path()}', properties={self.properties})"
+        # Represent a scope by its full taxonomic path
+        return self.full_path()
 
     def __eq__(self, other: Any) -> bool:
         """Two scopes are equal if they have the same full path."""
@@ -67,10 +74,11 @@ class Scope:
 
 
 class Domain:
-    """A domain defines all scopes for a particular simulation framework.
+    """A domain defines a taxonomy of scopes and processes for a simulation.
 
-    A domain acts as a registry of scopes, allowing structured access,
-    filtering, and querying by hierarchy.
+    The Domain holds:
+    - taxonomy: A tree of hierarchical scopes from domain.yaml
+    - processes: A dict of process definitions from domain_processes.yaml
     """
 
     def __init__(self, name: str):
@@ -80,17 +88,8 @@ class Domain:
             name: The name of this domain (e.g., 'EcologicalSimulation').
         """
         self.name = name
-        self._scopes: Dict[str, Scope] = {}
-        # Template registries for systems and agents (populated from YAML)
-        from .system import SystemTemplate, AgentTemplate  # local import to avoid top-level cycle
-        self.system_templates: Dict[str, SystemTemplate] = {}
-        self.agent_templates: Dict[str, AgentTemplate] = {}
-
-    def get_system_template(self, name: str) -> Optional["SystemTemplate"]:
-        return self.system_templates.get(name)
-
-    def get_agent_template(self, name: str) -> Optional["AgentTemplate"]:
-        return self.agent_templates.get(name)
+        self.taxonomy: Dict[str, Scope] = {}  # full_path -> Scope
+        self.processes: Dict[str, Dict[str, Any]] = {}  # process_path -> process_dict
 
     def register_scope(self, scope: Scope) -> None:
         """Register a scope in this domain.
@@ -102,9 +101,12 @@ class Domain:
             ValueError: If a scope with the same full path is already registered.
         """
         path = scope.full_path()
-        if path in self._scopes:
+        if path in self.taxonomy:
             raise ValueError(f"Scope '{path}' is already registered in domain '{self.name}'")
-        self._scopes[path] = scope
+        self.taxonomy[path] = scope
+        # Ensure parent tracks this scope as a child
+        if scope.parent is not None:
+            scope.parent.add_child(scope)
 
     def get_scope(self, full_path: str) -> Optional[Scope]:
         """Retrieve a scope by its full hierarchical path.
@@ -115,7 +117,7 @@ class Domain:
         Returns:
             The Scope if found, None otherwise.
         """
-        return self._scopes.get(full_path)
+        return self.taxonomy.get(full_path)
 
     def get_scopes_by_ancestor(self, ancestor: Scope) -> List[Scope]:
         """Get all scopes that have a specific ancestor (or are equal to it).
@@ -127,22 +129,58 @@ class Domain:
             A list of Scopes that have the ancestor in their hierarchy.
         """
         result = [ancestor]
-        for scope in self._scopes.values():
+        for scope in self.taxonomy.values():
             if ancestor.is_ancestor_of(scope):
+                result.append(scope)
+        return result
+
+    def query_by_name(self, name: str) -> List[Scope]:
+        """Find all scopes that have the given name anywhere in their path.
+
+        Args:
+            name: The scope name to search for (e.g., 'crop').
+
+        Returns:
+            A list of Scopes whose full path contains the given name as a path component.
+        """
+        result = []
+        for scope in self.taxonomy.values():
+            if name in scope.full_path().split('/'):
                 result.append(scope)
         return result
 
     def list_all_scopes(self) -> List[Scope]:
         """Return all registered scopes in this domain."""
-        return list(self._scopes.values())
+        return list(self.taxonomy.values())
 
     def scopes_at_depth(self, depth: int) -> List[Scope]:
         """Return all scopes at a specific depth in the hierarchy."""
-        return [scope for scope in self._scopes.values() if scope.depth() == depth]
+        return [scope for scope in self.taxonomy.values() if scope.depth() == depth]
+
+    def register_process(self, process_path: str, process_data: Dict[str, Any]) -> None:
+        """Register a process definition in this domain.
+
+        Args:
+            process_path: The unique path of the process (e.g., 'process/production/forging').
+            process_data: The process definition dict from YAML.
+        """
+        self.processes[process_path] = process_data
+
+    def get_process(self, process_path: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a process definition by its path.
+
+        Args:
+            process_path: The full path of the process.
+
+        Returns:
+            The process definition dict if found, None otherwise.
+        """
+        return self.processes.get(process_path)
 
     def __repr__(self) -> str:
-        scope_count = len(self._scopes)
-        return f"Domain(name='{self.name}', scopes={scope_count})"
+        scope_count = len(self.taxonomy)
+        process_count = len(self.processes)
+        return f"Domain(name='{self.name}', scopes={scope_count}, processes={process_count})"
 
     @classmethod
     def from_yaml(cls, filepath: str) -> "Domain":
@@ -150,15 +188,28 @@ class Domain:
 
         If `filepath` is a directory, all files ending with `.yaml` or `.yml`
         in that directory are loaded in alphabetical order and merged into a
-        single Domain. Later files may add additional scopes.
+        single Domain. Later files may add additional scopes and processes.
 
-        The YAML format expected for each file is:
+        Domain files (domain.yaml) define scopes:
 
         name: Optional domain name
         scopes:
           - path: "root/child/sub"
             properties:
               key: value
+
+        Process files (domain_processes.yaml) define processes:
+
+        name: Optional process collection name
+        processes:
+          - path: "process/production/example"
+            name: "Example Process"
+            type: manual
+            time:
+              base_duration: 2.0
+            requirements: {...}
+            inputs: {...}
+            outputs: {...}
 
         Each `path` is split on `/` to create any necessary parent scopes.
         """
@@ -207,13 +258,12 @@ class Domain:
                 domain = cls(name or "domain")
             # If multiple files provide a name, we keep the first non-empty name.
 
-            # --- parse scopes as before ---
+            # --- Parse scopes from domain.yaml ---
             for entry in data.get("scopes", []) or []:
                 path = entry.get("path") or entry.get("name")
                 if not path:
                     continue
                 properties = entry.get("properties", {}) or {}
-                processes = entry.get("processes", []) or []  # Process names
                 parts = [p for p in path.split("/") if p]
                 parent = None
                 for i, part in enumerate(parts):
@@ -221,43 +271,20 @@ class Domain:
                     existing = domain.get_scope(full)
                     if existing is None:
                         props = properties if i == len(parts) - 1 else {}
-                        procs = processes if i == len(parts) - 1 else []
-                        scope = Scope(name=part, parent=parent, properties=props, processes=procs)
+                        scope = Scope(name=part, parent=parent, properties=props)
                         domain.register_scope(scope)
                         parent = scope
                     else:
                         parent = existing
 
-            # --- new: parse system and agent templates ---
-            # Import templates here to avoid circular imports at module load time
-            from .system import SystemTemplate, AgentTemplate
+            # --- Parse processes from domain_processes.yaml ---
+            for entry in data.get("processes", []) or []:
+                process_path = entry.get("path")
+                if not process_path:
+                    continue
+                # Store the entire process definition
+                domain.register_process(process_path, entry)
 
-            def _build_template(entry: dict, agent: bool = False):
-                tmpl_cls = AgentTemplate if agent else SystemTemplate
-                name = entry.get("name") or entry.get("id")
-                if name is None:
-                    raise ValueError("template entry missing 'name' or 'id'")
-                props = entry.get("properties", {}) or {}
-                labels = entry.get("labels", []) or []
-                is_location = bool(entry.get("is_location", False))
-                children = []
-                for child in entry.get("children", []) or []:
-                    child_is_agent = isinstance(child, dict) and child.get("type") == "agent"
-                    children.append(_build_template(child, agent=child_is_agent))
-                tmpl = tmpl_cls(name, properties=props, labels=labels, is_location=is_location)
-                for c in children:
-                    tmpl.add_child(c)
-                return tmpl
-
-            # Systems
-            for entry in data.get("systems", []) or []:
-                tmpl = _build_template(entry, agent=False)
-                domain.system_templates[tmpl.name] = tmpl
-
-            # Agents
-            for entry in data.get("agents", []) or []:
-                tmpl = _build_template(entry, agent=True)
-                domain.agent_templates[tmpl.name] = tmpl
 
         if domain is None:
             # No files matched; return an empty domain with the directory name

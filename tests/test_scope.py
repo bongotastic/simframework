@@ -98,8 +98,8 @@ class TestScope:
         root = Scope("biology")
         org = Scope("organism", parent=root, properties={"type": "living"})
         repr_str = repr(org)
-        assert "biology/organism" in repr_str
-        assert "type" in repr_str
+        # repr should be the full taxonomic path
+        assert repr_str == "biology/organism"
 
 
 class TestDomain:

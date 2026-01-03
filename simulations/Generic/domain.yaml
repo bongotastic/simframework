@@ -1,0 +1,18 @@
+name: Generic
+scopes:
+  - path: resources
+    properties:
+      description: "Basic resources for Generic simulation"
+  - path: agents
+    properties:
+      description: "Agent archetypes for Generic simulation"
+  - path: activities/production
+    properties:
+      description: "Production activities"
+
+  - path: attributes
+  - path: attributes/strength
+  - path: attributes/intelligence
+  - path: attributes/empathy
+  - path: attributes/agility
+    

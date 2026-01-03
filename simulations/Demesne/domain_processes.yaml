@@ -1,0 +1,510 @@
+# Example process definitions for the Demesne domain
+name: Demesne Processes
+
+processes:
+# Manufacturing process
+- path: process/production/forging_horseshoes
+  name: "Forging Horseshoes (Set of 4)"
+  type: manual
+  time:
+    base_duration: 2.0 # Hours
+  requirements: # Tools, Infrastructure, Labor that are not transformed (but may break)
+    infrastructure: structure/smithy_forge
+    tools:
+      - item: goods/tools/crafts/smithing/hammer
+        mtbf: 600.0
+      - item: goods/tools/crafts/smithing/anvil
+        mtbf: 5000.0
+    labor:
+      - role: tasks/blacksmith
+        skill: attributes/skill/smithing
+        count: 1
+
+  inputs: # Items that will be transformed and thus deleted from simulation
+    materials:
+      - item: materials/intermediate/metal_stock/wrought_iron
+        quantity: 1.5   # FLOAT: Mass (kg) of iron bar
+      - item: materials/fuel/charcoal
+        quantity: 5.0   # FLOAT: Mass (kg) of fuel
+
+  outputs: # Items that will be created by the process
+    products:
+      - item: goods/tools/transport/tack/horseshoe
+        quantity_base: 4 # INT: Discrete Count (Items)
+        skill_modifier: true
+    waste:
+      - item: materials/resource/waste/slag
+        quantity: 0.2 # FLOAT: Mass (kg)
+
+# Natural process example
+# spoilage process
+- path: process/spoilage/vegetable
+  name: "Generic Vegetable Spoilage"
+  type: natural
+  
+  # TIMING (Float = Hours)
+  # 21 days * 24 hours = 504.0 hours
+  time:
+    base_duration: 504.0
+ 
+  # INPUTS
+  # Natural processes consume no labor or tools, only time.
+  inputs:
+    materials: 
+      - item: source/plant/species/vegetable
+
+  # OUTPUTS
+  outputs:
+    # The primary output is the State Transition of the land entity
+    products:
+      - item: item/organic/waste/rotting_matter
+
+# --- CULTIVATION PROCESSES (Bread Cycle) ---
+
+- path: process/cultivation/ploughing
+  name: "Ploughing Fallow Land"
+  type: manual
+  time:
+    base_duration: 8.0 # Hours per unit (acre), the definition of an acre. 
+  requirements:
+    tools:
+      - item: goods/tools/agriculture/plow
+        mtbf: 200.0
+      - item: goods/tools/transport/tack/yoke
+        mtbf: 500.0
+    labor:
+      - role: social/tasks/ploughman
+        skill: attributes/skill/teamster
+        count: 1
+    animals:
+      - role: animals/domestic/ox/male/mature
+        properties:
+          - item: working
+        count: 2
+  inputs:
+    materials:
+      - item: land/cultivated/crop  # Any type of crop land 
+  outputs:
+    products:
+      - item: land/cultivated/crop/tilled # Ready for sowing
+
+- path: process/cultivation/sowing
+  name: "Generic Sowing"
+  type: manual
+  time:
+    base_duration: 4.0
+  requirements:
+    labor:
+      - role: social/tasks/peasant
+        skill: attributes/skill/cultivation
+        count: 1
+  inputs:
+    materials:
+      - item: land/cultivated/crop/tilled
+      - item: item/organic/plant/seed_stock
+        quantity_by_plant:
+          source/plant/species/cereal/wheat: 65.0
+          source/plant/species/cereal/rye: 60.0
+          source/plant/species/cereal/barley: 65.0
+          source/plant/species/cereal/oats: 70.0
+          source/plant/species/legume/pea: 80.0
+          source/plant/species/legume/bean: 90.0
+          source/plant/species/vegetable/onion: 4.0
+          source/plant/species/vegetable/leek: 3.0
+          source/plant/species/vegetable/cabbage: 0.5
+          source/plant/species/vegetable/beet: 6.0
+          source/plant/species/vegetable/carrot: 4.0
+          source/plant/species/fiber/flax: 70.0
+          source/plant/species/fiber/hemp: 50.0
+          source/plant/species/herb/garlic: 300.0
+          source/plant/species/herb/mustard: 4.0
+  outputs:
+    products:
+      - item: land/cultivated/crop/seeded
+
+- path: process/cultivation/harvesting
+  name: "Generic Harvesting (Crop → Harvested)"
+  type: manual
+  time:
+    base_duration: 16.0
+    by_plant:
+      source/plant/species/cereal/wheat: 16.0
+      source/plant/species/cereal/rye: 16.0
+      source/plant/species/cereal/barley: 16.0
+      source/plant/species/cereal/oats: 16.0
+      source/plant/species/legume/pea: 12.0
+      source/plant/species/legume/bean: 12.0
+      source/plant/species/vegetable/onion: 24.0
+      source/plant/species/vegetable/leek: 32.0
+      source/plant/species/vegetable/cabbage: 24.0
+      source/plant/species/vegetable/beet: 20.0
+      source/plant/species/vegetable/carrot: 20.0
+      source/plant/species/fiber/flax: 12.0
+      source/plant/species/fiber/hemp: 24.0
+      source/plant/species/herb/garlic: 18.0
+      source/plant/species/herb/mustard: 12.0
+  requirements:
+    tools:
+      - item: item/goods/tools/agriculture/harvesting
+        mtbf: 100.0
+    labor:
+      - role: social/tasks/peasant
+        skill: attributes/skill/harvesting
+        count: 4
+  inputs:
+    materials:
+      - item: land/cultivated/crop/harvestable
+  outputs:
+    products:
+      - item: land/cultivated/crop/harvested
+      - item: item/organic/plant/sheaf
+        quantity_by_plant:
+          source/plant/species/cereal/wheat: 700.0
+          source/plant/species/cereal/rye: 750.0
+          source/plant/species/cereal/barley: 650.0
+          source/plant/species/cereal/oats: 600.0
+          source/plant/species/legume/pea: 1000.0
+          source/plant/species/legume/bean: 1200.0
+          source/plant/species/vegetable/onion: 1800.0
+          source/plant/species/vegetable/leek: 2000.0
+          source/plant/species/vegetable/cabbage: 3000.0
+          source/plant/species/vegetable/beet: 2500.0
+          source/plant/species/vegetable/carrot: 2000.0
+          source/plant/species/fiber/flax: 2000.0
+          source/plant/species/fiber/hemp: 2500.0
+          source/plant/species/herb/garlic: 1500.0
+          source/plant/species/herb/mustard: 600.0
+
+# --- NATURAL GROWTH PROCESSES (crop) ---
+- path: process/crop/germination
+  name: "Generic germination (Early Stage)"
+  type: natural
+  time:
+    base_duration: 168.0 
+    by_plant:
+      source/plant/species/cereal/wheat: 168
+      source/plant/species/cereal/rye: 168
+      source/plant/species/cereal/barley: 168
+      source/plant/species/cereal/oats: 168
+      source/plant/species/legume/pea: 168
+      source/plant/species/legume/bean: 336
+      source/plant/species/vegetable/onion: 336
+      source/plant/species/vegetable/leek: 336
+      source/plant/species/vegetable/cabbage: 168
+      source/plant/species/vegetable/beet: 168
+      source/plant/species/vegetable/carrot: 336
+      source/plant/species/fiber/flax: 168
+      source/plant/species/fiber/hemp: 168
+      source/plant/species/herb/garlic: 336
+      source/plant/species/herb/mustard: 120
+  inputs:
+    materials:
+      - item: land/cultivated/crop/seeded 
+  outputs:
+    products:
+      - item: land/cultivated/crop/growing/early
+
+- path: process/crop/growth
+  name: "Generic Growth (Early Stage)"
+  type: natural
+  time:
+    base_duration: 1500.0 # default (~62.5 days) if plant not listed
+    by_plant:
+      source/plant/species/cereal/wheat: 1512
+      source/plant/species/cereal/rye: 1344
+      source/plant/species/cereal/barley: 1176
+      source/plant/species/cereal/oats: 1344
+      source/plant/species/legume/pea: 1008
+      source/plant/species/legume/bean: 1680
+      source/plant/species/vegetable/onion: 1680
+      source/plant/species/vegetable/leek: 2016
+      source/plant/species/vegetable/cabbage: 2016
+      source/plant/species/vegetable/beet: 1344
+      source/plant/species/vegetable/carrot: 1680
+      source/plant/species/fiber/flax: 1008
+      source/plant/species/fiber/hemp: 1680
+      source/plant/species/herb/garlic: 2352
+      source/plant/species/herb/mustard: 672
+  inputs:
+    materials:
+      - item: land/cultivated/crop/growing/early
+  outputs:
+    products:
+      - item: land/cultivated/crop/growing/late
+
+- path: process/crop/ripening
+  name: "Generic Ripening"
+  type: natural
+  time:
+    base_duration: 720.0 # default (~30 days) if plant not listed
+    by_plant:
+      source/plant/species/cereal/wheat: 1008
+      source/plant/species/cereal/rye: 1008
+      source/plant/species/cereal/barley: 840
+      source/plant/species/cereal/oats: 840
+      source/plant/species/legume/pea: 504
+      source/plant/species/legume/bean: 672
+      source/plant/species/vegetable/onion: 672
+      source/plant/species/vegetable/leek: 1008
+      source/plant/species/vegetable/cabbage: 672
+      source/plant/species/vegetable/beet: 672
+      source/plant/species/vegetable/carrot: 672
+      source/plant/species/fiber/flax: 672
+      source/plant/species/fiber/hemp: 1008
+      source/plant/species/herb/garlic: 840
+      source/plant/species/herb/mustard: 504
+  inputs:
+    materials:
+      - item: land/cultivated/crop/growing/late
+  outputs:
+    products:
+      - item: land/cultivated/crop/harvestable
+
+- path: process/crop/wilting
+  name: "Generic Wilting (Harvestable → Wilted)"
+  type: natural
+  time:
+    base_duration: 168.0  # default hours (~1 week) if plant not listed
+    by_plant:
+      source/plant/species/cereal/wheat: 336
+      source/plant/species/cereal/rye: 336
+      source/plant/species/cereal/barley: 336
+      source/plant/species/cereal/oats: 336
+      source/plant/species/legume/pea: 168
+      source/plant/species/legume/bean: 504
+      source/plant/species/vegetable/onion: 672
+      source/plant/species/vegetable/leek: 1344
+      source/plant/species/vegetable/cabbage: 1344
+      source/plant/species/vegetable/beet: 1008
+      source/plant/species/vegetable/carrot: 672
+      source/plant/species/fiber/flax: 168
+      source/plant/species/fiber/hemp: 504
+      source/plant/species/herb/garlic: 504
+      source/plant/species/herb/mustard: 336
+  inputs:
+    materials:
+      - item: land/cultivated/crop/harvestable
+  outputs:
+    products:
+      - item: land/cultivated/crop/wilted
+
+# --- PROCESSING PROCESSES (Bread Cycle) ---
+
+- path: process/processing/threshing
+  name: "Generic Threshing (Sheaves → Grain + Straw/Chaff)"
+  type: manual
+  time:
+    base_duration: 8.0
+  requirements:
+    infrastructure: item/structure/communal_threshing_floor
+    tools:
+      - item: item/goods/tools/agriculture/harvesting/flail
+        mtbf: 50.0
+    labor:
+      - role: social/tasks/peasant
+        count: 2
+  inputs:
+    materials:
+      - item: item/organic/plant/sheaf # Sheaves / raw biomass per acre
+        quantity_by_plant:
+          source/plant/species/cereal/wheat: 900.0
+          source/plant/species/cereal/rye: 975.0
+          source/plant/species/cereal/barley: 1300.0
+          source/plant/species/cereal/oats: 1260.0
+          source/plant/species/legume/bean: 2100.0
+          source/plant/species/legume/pea: 1800.0
+  outputs:
+    products:
+      - item: item/organic/plant/grain
+        quantity_by_plant:
+          source/plant/species/cereal/wheat: 300.0
+          source/plant/species/cereal/rye: 325.0
+          source/plant/species/cereal/barley: 520.0
+          source/plant/species/cereal/oats: 420.0
+          source/plant/species/legume/bean: 870.0
+          source/plant/species/legume/pea: 750.0
+      - item: item/organic/plant/straw
+        quantity_by_plant:
+          source/plant/species/cereal/wheat: 570.0
+          source/plant/species/cereal/rye: 617.5
+          source/plant/species/cereal/barley: 741.0
+          source/plant/species/cereal/oats: 798.0
+          source/plant/species/legume/bean: 1168.5
+          source/plant/species/legume/pea: 997.5
+      - item: item/organic/plant/chaff
+        quantity_by_plant:
+          source/plant/species/cereal/wheat: 30.0
+          source/plant/species/cereal/rye: 32.5
+          source/plant/species/cereal/barley: 39.0
+          source/plant/species/cereal/oats: 42.0
+          source/plant/species/legume/bean: 61.5
+          source/plant/species/legume/pea: 52.5
+
+- path: process/processing/milling_wheat
+  name: "Milling Wheat"
+  type: manual
+  time:
+    base_duration: 4.0
+  requirements:
+    infrastructure: item/structure/mill
+    labor:
+      - role: social/tasks/miller
+        count: 1
+  inputs:
+    materials:
+      - item: item/organic/plant/grain
+        quantity: 100.0
+  outputs:
+    products:
+      - item: item/organic/plant/flour
+        quantity: 90.0
+      - item: item/organic/plant/bran
+        quantity: 10.0
+
+- path: process/processing/baking_bread
+  name: "Baking Wheat Bread"
+  type: manual
+  time:
+    base_duration: 6.0
+  requirements:
+    infrastructure: item/structure/bakehouse
+    labor:
+      - role: social/tasks/baker
+        skill: attributes/skill/provisioning
+        count: 1
+  inputs:
+    materials:
+      - item: item/organic/plant/flour
+        quantity: 10.0
+      - item: source/inorganic/water/drinking_water
+        quantity: 5.0
+      - item: source/inorganic/fuel/charcoal
+        quantity: 2.0
+  outputs:
+    products:
+      - item: item/goods/food/bread/wheat_loaf
+        quantity_base: 20 # Loaves
+
+# --- SPOILAGE PROCESSES (Bread Cycle) ---
+
+- path: process/spoilage/flour
+  name: "Flour Spoilage"
+  type: natural
+  time:
+    mtbf: 4000.0 # ~6 months median
+  inputs:
+    materials:
+      - item: item/organic/plant/flour
+  outputs:
+    products:
+      - item: item/organic/waste/rotting_matter
+
+- path: process/spoilage/bread
+  name: "Bread Staling"
+  type: natural
+  time:
+    mtbf: 72.0 # 3 days median
+  inputs:
+    materials:
+      - item: item/goods/food/bread
+  outputs:
+    products:
+      - item: item/organic/waste/rotting_matter
+
+# --- ANIMAL GROWTH PROCESSES (Sheep Cycle) ---
+
+- path: process/growth/sheep_lamb_to_juvenile
+  name: "Sheep Growth (Lamb -> mature)"
+  type: natural
+  time:
+    base_duration: 2160.0 # ~3 months (90 days)
+  inputs:
+    materials: # Using materials to represent the entity state transition for now
+      - item: animals/domestic/sheep/male/juvenile # Assuming 'juvenile' here means lamb
+  outputs:
+    products:
+      - item: animals/domestic/sheep/male/mature # Transition to next stage
+
+- path: process/growth/sheep_gestation
+  name: "Sheep Gestation"
+  type: natural
+  time:
+    base_duration: 3600.0 # ~5 months (150 days)
+  inputs:
+    materials:
+      - item: animals/domestic/sheep/female/mature # Ewe
+  outputs:
+    products:
+      - item: animals/domestic/sheep/female/mature # Ewe remains
+      - item: animals/domestic/sheep/male/juvenile # Lamb born (simplified gender)
+
+# --- CHARCOAL PRODUCTION CYCLE ---
+
+- path: process/extraction/felling_timber
+  name: "Felling Timber for Charcoal"
+  type: manual
+  time:
+    base_duration: 8.0 # Hours per tree or small stand
+  requirements:
+    tools:
+      - item: goods/tools/handtools/axe
+        mtbf: 300.0
+    labor:
+      - role: tasks/forester
+        skill: attributes/skill/foraging
+        count: 2
+  inputs:
+    materials:
+      - item: land/wild/wooded
+  outputs:
+    products:
+      - item: item/goods/stock/wood/timber
+        quantity: 1.0
+
+- path: process/nature/wood_seasoning
+  name: "Wood Seasoning (Air-dry)"
+  type: natural
+  time:
+    base_duration: 3024.0 # ~4 months (seasoning)
+  inputs:
+    materials:
+      - item: item/goods/stock/wood/timber
+  outputs:
+    products:
+      - item: item/goods/stock/wood/seasoned
+        quantity: 1.0
+
+- path: process/production/charcoal_burning
+  name: "Charcoal Burning (Clamp)"
+  type: manual
+  time:
+    base_duration: 72.0 # ~3 days for a clamp burn
+  requirements:
+    infrastructure: structure/charcoal_clamp
+    labor:
+      - role: social/tasks/forester
+        count: 2
+    tools:
+      - item: item/goods/tools/handtools/axe
+        mtbf: 300.0
+  inputs:
+    materials:
+      - item: item/goods/stock/wood/seasoned
+        quantity: 10.0 # kg or volume unit for a clamp
+  outputs:
+    products:
+      - item: item/goods/fuel/charcoal
+        quantity: 3.0 # approximate yield (30%)
+    waste:
+      - item: item/organic/plant/ash_material
+        quantity: 2.0
+
+
+
+
+
+
+
+
+
+
