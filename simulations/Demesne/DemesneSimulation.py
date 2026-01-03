@@ -1,6 +1,7 @@
 """Demesne simulation stub."""
 
 from typing import Optional
+from datetime import datetime
 
 from simulations.Demesne.landplot import LandPlot
 
@@ -8,6 +9,8 @@ from simulations.Demesne.landplot import LandPlot
 class DemesneSimulation:
     def __init__(self, engine=None):
         self.engine = engine
+        # store inception as a datetime; use imported `datetime` class
+        self.inception_time = datetime.now()
 
     def setup(self):
         """Set up domain and systems (stub)."""
