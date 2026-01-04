@@ -159,6 +159,51 @@ class SimulationEngine:
     def run(self, until: Optional[datetime.datetime] = None) -> None:
         self.scheduler.run(until=until)
 
+    def get_process(self, identifier: str) -> Optional["Process"]:
+        """Retrieve a loaded Process by path or name.
+
+        The lookup strategy is (in order):
+        1. Exact path key in `self.processes` (e.g., "process/cultivation/sowing").
+        2. Exact `Process.name` match.
+        3. Path suffix match (e.g., "sowing" -> matches path ending with "sowing").
+        4. Case-insensitive substring match against path or name.
+
+        Returns the first matching `Process` or None if not found.
+        """
+        if not identifier:
+            return None
+
+        # 1) Exact path
+        if identifier in self.processes:
+            return self.processes[identifier]
+
+        # 2) Exact name match
+        for proc in self.processes.values():
+            try:
+                if proc.name == identifier:
+                    return proc
+            except Exception:
+                continue
+
+        # 3) Path suffix match
+        for proc in self.processes.values():
+            try:
+                if proc.path.endswith(identifier):
+                    return proc
+            except Exception:
+                continue
+
+        # 4) Case-insensitive substring match
+        ident_low = identifier.lower()
+        for proc in self.processes.values():
+            try:
+                if ident_low in proc.name.lower() or ident_low in proc.path.lower():
+                    return proc
+            except Exception:
+                continue
+
+        return None
+
     def determine_spoilage_probability(self, age: float, median_time: float, beta: float = 10.0) -> float:
         """Return the log-logistic cumulative failure probability at `age`.
 
