@@ -51,6 +51,8 @@ class SimulationEngine:
         self.domain = None
         self.processes: Dict[str, "Process"] = {}
 
+        # Heartbeat controls periodic engine-level ticks (default 24 hours)
+        self.heartbeat: datetime.timedelta = datetime.timedelta(hours=24)
         # Try to find the Demesne domain files relative to the repo root
         repo_root = Path.cwd()
         domain_candidate = repo_root / "simulations" / "Demesne" / "domain.yaml"
@@ -147,6 +149,19 @@ class SimulationEngine:
             except Exception:
                 # Best-effort: do not raise if scheduler refuses to update
                 pass
+
+    def set_heartbeat(self, heartbeat: datetime.timedelta) -> None:
+        """Set the engine heartbeat interval.
+
+        Args:
+            heartbeat: a datetime.timedelta representing the heartbeat interval.
+
+        Raises:
+            TypeError: if `heartbeat` is not a datetime.timedelta.
+        """
+        if not isinstance(heartbeat, datetime.timedelta):
+            raise TypeError("heartbeat must be a datetime.timedelta")
+        self.heartbeat = heartbeat
 
     def get_inception_time(self) -> Optional[datetime.datetime]:
         """Return the configured inception time or the scheduler's current time."""
