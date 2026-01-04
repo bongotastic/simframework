@@ -143,6 +143,44 @@ class SimulationEngine:
         event.system = entity
         return self.scheduler.schedule(delay, event=event, **data)
 
+    def schedule(self, delay: Union[float, datetime.timedelta, datetime.datetime], scope: Optional[object] = None, event_data: Optional[dict] = None) -> tuple[datetime.datetime, int]:
+        """Create and schedule an Event without requiring the caller to build one.
+
+        Args:
+            delay: float seconds, timedelta, or absolute datetime for the trigger.
+            scope: Optional Scope object or scope path string. If a string and
+                the engine has a `domain`, an attempt will be made to resolve
+                it via `self.domain.get_scope()`; otherwise, the provided
+                object is set directly on the Event.
+            event_data: Optional dict to use as the Event.data payload.
+
+        Returns:
+            Tuple of (scheduled_datetime, event_id).
+        """
+        if event_data is None:
+            event_data = {}
+        if not isinstance(event_data, dict):
+            raise TypeError("event_data must be a dict if provided")
+
+        evt = Event(data=event_data)
+
+        scope_obj = scope
+        # Resolve scope string to Scope object when possible
+        if isinstance(scope, str) and getattr(self, "domain", None) is not None:
+            try:
+                scope_obj = self.domain.get_scope(scope)
+            except Exception:
+                scope_obj = None
+
+        if scope_obj is not None:
+            try:
+                evt.scope = scope_obj
+            except Exception:
+                # best-effort: ignore scope attachment failures
+                pass
+
+        return self.scheduler.schedule(delay, event=evt)
+
     def set_inception_time(self, inception: datetime.datetime) -> None:
         """Set the simulation inception time and update the scheduler's now.
 
