@@ -182,6 +182,31 @@ class Domain:
         process_count = len(self.processes)
         return f"Domain(name='{self.name}', scopes={scope_count}, processes={process_count})"
 
+    def is_kind_of(self, scope_a: "Scope|str", scope_b: "Scope|str") -> bool:
+        """Return True if scope A is a kind of scope B.
+
+        A is a kind of B when A == B or A's full path starts with B's full path
+        followed by a path separator ("/"). Accepts `Scope` instances or full
+        path strings for both arguments. If given strings that do not resolve
+        to registered scopes, they are compared as plain paths.
+        """
+        from typing import Union
+
+        def _to_path(x: Union[Scope, str]):
+            if isinstance(x, Scope):
+                return x.full_path()
+            if isinstance(x, str):
+                return x.strip('/')
+            raise TypeError("scope must be a Scope or str")
+
+        a_path = _to_path(scope_a)
+        b_path = _to_path(scope_b)
+        if a_path == b_path:
+            return True
+        if b_path == "":
+            return False
+        return a_path.startswith(b_path + "/")
+
     @classmethod
     def from_yaml(cls, filepath: str) -> "Domain":
         """Load a Domain definition from a YAML file or directory of YAML files.

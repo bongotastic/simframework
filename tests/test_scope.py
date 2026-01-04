@@ -199,6 +199,31 @@ class TestDomain:
         assert "EcologicalSim" in repr_str
         assert "scopes=1" in repr_str
 
+    def test_is_kind_of_util(self):
+        domain = Domain("TestDom")
+        biology = Scope("biology")
+        organism = Scope("organism", parent=biology)
+        plant = Scope("plant", parent=organism)
+        growth = Scope("growth", parent=plant)
+        domain.register_scope(biology)
+        domain.register_scope(organism)
+        domain.register_scope(plant)
+        domain.register_scope(growth)
+
+        # Scope objects
+        assert domain.is_kind_of(growth, plant) is True
+        assert domain.is_kind_of(plant, plant) is True
+        assert domain.is_kind_of(plant, growth) is False
+
+        # Strings
+        assert domain.is_kind_of("biology/organism/plant/growth", "biology/organism") is True
+        assert domain.is_kind_of("biology/organism/plant", "biology/organism/plant") is True
+        assert domain.is_kind_of("biology/organism/plant", "biology/organism/plant/growth") is False
+
+        # Mixed types
+        assert domain.is_kind_of(growth, "biology/organism") is True
+        assert domain.is_kind_of("biology/organism/plant/growth", plant) is True
+
 
 class TestScopeIntegration:
     """Test Scope and Domain integration."""
