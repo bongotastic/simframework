@@ -207,12 +207,12 @@ class SimulationEngine:
     def get_process_including(self, input: str = "", output: str = "") -> list:
         """Return a list of Processes that include the specified input and/or output.
 
-        Behavior:
-          - If `input` is provided, process must include that item as an input
-            (either exact item match or present in an input's quantity variants).
-          - If `output` is provided, process must include that item as an output
-            (either exact item match or present in an output's quantity variants).
-          - If neither is provided, returns all loaded processes.
+        Use `Process` helper methods for matching to keep logic centralised
+        in the `Process` class (cleaner and easier to extend):
+          - `Process.has_input(identifier)`
+          - `Process.has_output(identifier)`
+
+        If neither `input` nor `output` is provided, returns all loaded processes.
         """
         results = []
         want_input = bool(input)
@@ -220,39 +220,11 @@ class SimulationEngine:
 
         for proc in self.processes.values():
             try:
-                ok_in = True
-                ok_out = True
-
-                if want_input:
-                    ok_in = False
-                    for io in getattr(proc, "inputs", []):
-                        try:
-                            if getattr(io, "item", None) == input:
-                                ok_in = True
-                                break
-                            qvars = getattr(io, "quantity_variants", None)
-                            if isinstance(qvars, dict) and input in qvars:
-                                ok_in = True
-                                break
-                        except Exception:
-                            continue
-
-                if want_output:
-                    ok_out = False
-                    for io in getattr(proc, "outputs", []):
-                        try:
-                            if getattr(io, "item", None) == output:
-                                ok_out = True
-                                break
-                            qvars = getattr(io, "quantity_variants", None)
-                            if isinstance(qvars, dict) and output in qvars:
-                                ok_out = True
-                                break
-                        except Exception:
-                            continue
-
-                if ok_in and ok_out:
-                    results.append(proc)
+                if want_input and not proc.has_input(input):
+                    continue
+                if want_output and not proc.has_output(output):
+                    continue
+                results.append(proc)
             except Exception:
                 # Skip process on unexpected errors
                 continue
