@@ -406,9 +406,77 @@ class Process:
         unexpected state.
         """
         try:
-            return self.process_type == ProcessType.NATURAL
+            # A process is considered 'natural' for simulation purposes when
+            # it consumes exactly one input and has no explicit requirements.
+            return len(self.inputs) == 1 and (not self.requirements)
         except Exception:
             return False
+
+    def get_inputs(self) -> Dict[str, Dict[str, Any]]:
+        """Return a simple mapping of input item -> properties dict.
+
+        The returned dictionary maps the input taxonomy path string to a
+        dictionary of properties derived from the corresponding
+        `ProcessIO_Input` instance (for example: `quantity`,
+        `quantity_variants`, plus any extra properties). If a matching
+        `RequirementTool` exists for the same item, its `mtbf` is merged
+        into the properties under the `mtbf` key.
+        """
+        results: Dict[str, Dict[str, Any]] = {}
+        # Build quick lookup for tool mtbf values keyed by item
+        tool_mtbf: Dict[str, Optional[float]] = {}
+        for req in self.requirements:
+            if isinstance(req, RequirementTool):
+                try:
+                    tool_mtbf[req.item] = req.mtbf
+                except Exception:
+                    tool_mtbf[req.item] = None
+
+        for io in self.inputs:
+            try:
+                item = getattr(io, "item", None)
+                if not isinstance(item, str) or not item:
+                    continue
+                props: Dict[str, Any] = {}
+                # include canonical properties from ProcessIO_Input
+                props.update(getattr(io, "properties", {}) or {})
+                # expose convenience keys
+                props.setdefault("quantity", getattr(io, "quantity", None))
+                props.setdefault("quantity_variants", getattr(io, "quantity_variants", {}))
+                # merge tool mtbf when available for exact item match
+                if item in tool_mtbf:
+                    props.setdefault("mtbf", tool_mtbf.get(item))
+                results[item] = props
+            except Exception:
+                continue
+
+        return results
+
+    def has_as_input(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Return the input properties dict when this process has `identifier` as input.
+
+        Matching uses the same prefix semantics as `has_input()` (i.e. stored
+        input item paths whose `startswith(identifier)` will match). If a
+        match is found, returns the properties dict produced by
+        `get_inputs()` for that input; otherwise returns `None`.
+        """
+        if not identifier:
+            return None
+        norm = identifier.strip("/")
+        inputs = self.get_inputs()
+        for item_path, props in inputs.items():
+            try:
+                if item_path.strip("/").startswith(norm):
+                    return props
+                # Also check variant keys if present
+                qvars = props.get("quantity_variants")
+                if isinstance(qvars, dict):
+                    for k in qvars.keys():
+                        if isinstance(k, str) and k.strip("/").startswith(norm):
+                            return props
+            except Exception:
+                continue
+        return None
 
     def has_requirement(self, identifier: str) -> bool:
         """Return True if this process has a requirement matching `identifier`.
