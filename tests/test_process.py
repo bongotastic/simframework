@@ -290,6 +290,11 @@ class TestProcessFromYAML:
         assert proc.has_input("item/organic/plant/sheaf") is True
         assert proc.has_input("source/plant/species/cereal/wheat") is True
         assert proc.has_input("source/plant/species/legume/pea") is False
+        # Prefix queries should match
+        assert proc.has_input("source/plant/species/cereal") is True
+        assert proc.has_input("source/plant/species") is True
+        assert proc.has_input("source/plant") is True
+        assert proc.has_input("source") is True
 
     def test_has_output(self):
         data = {
@@ -312,6 +317,9 @@ class TestProcessFromYAML:
         assert proc.has_output("item/organic/plant/grain") is True
         assert proc.has_output("source/plant/species/cereal/wheat") is True
         assert proc.has_output("item/organic/plant/chaff") is False
+        # Prefix queries should match
+        assert proc.has_output("source/plant/species/cereal") is True
+        assert proc.has_output("item/organic/plant") is True
 
     def test_has_requirement(self):
         data = {
@@ -338,6 +346,11 @@ class TestProcessFromYAML:
         assert proc.has_requirement("social/role/blacksmith") is True
         assert proc.has_requirement("source/animal/domestic/ox") is True
         assert proc.has_requirement("nonexistent") is False
+        # Prefix queries
+        assert proc.has_requirement("goods/tools") is True
+        assert proc.has_requirement("social/role") is True
+        assert proc.has_requirement("source/animal") is True
+        assert proc.has_requirement("source") is True
 
 
 class TestProcessRepr:

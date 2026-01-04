@@ -356,18 +356,22 @@ class Process:
         """Return True if this process has an input that matches `identifier`.
 
         Matching logic:
-        - If an input's item equals `identifier`, it's a match.
-        - If an input has `quantity_variants` containing `identifier` as a key, it's a match.
+        - Matches when the stored input path startswith the query identifier (prefix match).
+        - Also checks quantity variant keys for prefix matches.
         """
         if not identifier:
             return False
+        norm = identifier.strip("/")
         for io in self.inputs:
             try:
-                if getattr(io, "item", None) == identifier:
+                item = getattr(io, "item", None)
+                if isinstance(item, str) and item.strip("/").startswith(norm):
                     return True
                 qvars = getattr(io, "quantity_variants", None)
-                if isinstance(qvars, dict) and identifier in qvars:
-                    return True
+                if isinstance(qvars, dict):
+                    for k in qvars.keys():
+                        if isinstance(k, str) and k.strip("/").startswith(norm):
+                            return True
             except Exception:
                 continue
         return False
@@ -375,19 +379,21 @@ class Process:
     def has_output(self, identifier: str) -> bool:
         """Return True if this process has an output that matches `identifier`.
 
-        Matching logic mirrors `has_input`:
-        - If an output's item equals `identifier`, it's a match.
-        - If an output has `quantity_variants` containing `identifier` as a key, it's a match.
+        Matching logic mirrors `has_input` with prefix semantics.
         """
         if not identifier:
             return False
+        norm = identifier.strip("/")
         for io in self.outputs:
             try:
-                if getattr(io, "item", None) == identifier:
+                item = getattr(io, "item", None)
+                if isinstance(item, str) and item.strip("/").startswith(norm):
                     return True
                 qvars = getattr(io, "quantity_variants", None)
-                if isinstance(qvars, dict) and identifier in qvars:
-                    return True
+                if isinstance(qvars, dict):
+                    for k in qvars.keys():
+                        if isinstance(k, str) and k.strip("/").startswith(norm):
+                            return True
             except Exception:
                 continue
         return False
@@ -395,19 +401,22 @@ class Process:
     def has_requirement(self, identifier: str) -> bool:
         """Return True if this process has a requirement matching `identifier`.
 
-        Matching logic:
-        - If a requirement's `item` equals `identifier`, it's a match. This
-          covers tools, infrastructure, labor (role), and animals (role).
+        Matching logic uses prefix semantics against requirement item or stored role.
         """
         if not identifier:
             return False
+        norm = identifier.strip("/")
         for req in self.requirements:
             try:
-                if getattr(req, "item", None) == identifier:
+                item = getattr(req, "item", None)
+                if isinstance(item, str) and item.strip("/").startswith(norm):
                     return True
                 # Some requirements may store role as 'role' in properties
-                role = req.get_property("role") if hasattr(req, "get_property") else None
-                if role == identifier:
+                role = None
+                if hasattr(req, "get_property"):
+                    role = req.get_property("role")
+                # Fallback: some requirement classes store role in 'item' already
+                if isinstance(role, str) and role.strip("/").startswith(norm):
                     return True
             except Exception:
                 continue
