@@ -231,7 +231,7 @@ class Scheduler:
         
         return None
 
-    def run(self, until: Optional[datetime.datetime] = None) -> None:
+    def run(self, until: Optional[datetime.datetime] = None) -> Event:
         """Run events until queue empty or until the `until` datetime.
 
         If `until` is provided and no more events happen before `until`, the
@@ -244,6 +244,7 @@ class Scheduler:
             next_time = self._queue[0][0]
             if until is not None and next_time > until:
                 break
+            # process the next event and continue looping
             self.step()
 
         if until is not None and self._time < until:

@@ -39,12 +39,11 @@ class DemesneSimulation(SimulationEngine):
         """Create person agents (stub)."""
         pass
 
-    def create_landplot(self, identifier: Optional[str] = None, domain: Optional[object] = None, *, stage_path: Optional[str] = None, vegetation_path: Optional[str] = None, acreage: float = 1.0) -> LandPlot:
-        """Create a `LandPlot` instance resolved against `domain` (default: engine domain).
+    def create_landplot(self, identifier: Optional[str] = None, *, stage_path: Optional[str] = None, vegetation_path: Optional[str] = None, acreage: float = 1.0) -> LandPlot:
+        """Create a `LandPlot` instance resolved against this engine's `domain`.
 
         Args:
             identifier: optional identifier for the LandPlot; if omitted, a unique id is generated.
-            domain: optional `Domain` instance used to resolve `stage_path` and `vegetation_path` (defaults to engine domain).
             stage_path: optional scope full path for the growth stage.
             vegetation_path: optional scope full path for the vegetation.
             acreage: plot area in acres.
@@ -52,8 +51,8 @@ class DemesneSimulation(SimulationEngine):
         Returns:
             LandPlot instance.
         """
-        # Use provided domain or fall back to this engine's domain
-        dom = domain if domain is not None else getattr(self, "domain", None)
+        # Use the engine's domain to resolve stage/vegetation scopes when available
+        dom = getattr(self, "domain", None)
 
         stage = None
         veg = None
@@ -75,8 +74,52 @@ class DemesneSimulation(SimulationEngine):
             self._entity_counter += 1
 
         lp = LandPlot(identifier=identifier, stage=stage, vegetation=veg, acreage=acreage)
+        self.add_entity(lp)
+
+        # Add an event to register the landplot progress
+        next_stage = self.get_process_including(input=stage)
+        if next_stage is not None:
+            self.scheduler.schedule(
+                delay= next_stage.get_duration(veg), # tries to get correct duration, assume inception is now. 
+                callback=next_stage.execute,
+                entity=lp,
+                message=f"Process {next_stage.template.name} for LandPlot {lp.id}",
+            )
+
         return lp
 
     def run(self):
         """Run the simulation (stub)."""
-        pass
+
+        # Last event was a heartbeat; continue processing events
+        last_was_heartbeat = False
+
+        while True:
+            # Fetch next event
+            event = self.scheduler.step()
+            if event is None:
+                break
+
+            # get scope of event
+            this_scope = event.scope.full_path if event.scope else "N/A"
+
+            # Prevent infinite loop on heartbeat events
+            if this_scope == "heartbeat" and len(self.scheduler._queue) == 1 and last_was_heartbeat:
+                break
+
+            # Write to log
+            self.log(f"Processing event with scope: {this_scope} at simulation time {self.scheduler.now}")  
+
+            # Dispatch 
+            match this_scope:
+                case "heartbeat":
+                    self.handle_heartbeat(event)
+                    last_was_heartbeat = True
+                case _:
+                    # For other events, just print for nowl
+                    last_was_heartbeat = False
+
+    def handle_heartbeat(self, event):
+        """Handle heartbeat events (stub)."""
+        # For demonstration, just print heartbeat occurrence
+        self.log(f"Heartbeat event at simulation time {self.scheduler.now}")
