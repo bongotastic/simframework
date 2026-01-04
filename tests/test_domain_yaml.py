@@ -20,7 +20,7 @@ def test_domain_from_yaml_demesne():
 
     # Domain should include top-level 'land' and 'item' scopes (post-refactor)
     assert domain.get_scope("land") is not None
-    assert domain.get_scope("item/goods/tools/agriculture/sickle") is not None
+    assert domain.get_scope("item/goods/tools/handtools") is not None
 
     top_level_names = {s.name for s in domain.scopes_at_depth(0)}
     assert "land" in top_level_names
