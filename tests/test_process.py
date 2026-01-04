@@ -291,6 +291,54 @@ class TestProcessFromYAML:
         assert proc.has_input("source/plant/species/cereal/wheat") is True
         assert proc.has_input("source/plant/species/legume/pea") is False
 
+    def test_has_output(self):
+        data = {
+            "path": "process/processing/threshing",
+            "name": "Threshing",
+            "type": "manual",
+            "time": {"base_duration": 8.0},
+            "inputs": {
+                "materials": [
+                    {"item": "item/organic/plant/sheaf", "quantity_by_plant": {"source/plant/species/cereal/wheat": 900.0}}
+                ]
+            },
+            "outputs": {
+                "products": [
+                    {"item": "item/organic/plant/grain", "quantity_by_plant": {"source/plant/species/cereal/wheat": 300.0}}
+                ]
+            },
+        }
+        proc = Process.from_yaml_dict(data)
+        assert proc.has_output("item/organic/plant/grain") is True
+        assert proc.has_output("source/plant/species/cereal/wheat") is True
+        assert proc.has_output("item/organic/plant/chaff") is False
+
+    def test_has_requirement(self):
+        data = {
+            "path": "process/production/forging_horseshoes",
+            "name": "Forging Horseshoes",
+            "type": "manual",
+            "time": {"base_duration": 2.0},
+            "requirements": {
+                "infrastructure": "structure/smithy_forge",
+                "tools": [
+                    {"item": "goods/tools/crafts/smithing/hammer", "mtbf": 600.0},
+                ],
+                "labor": [
+                    {"role": "social/role/blacksmith", "skill": "attributes/skill/smithing", "count": 1}
+                ],
+                "animals": [
+                    {"role": "source/animal/domestic/ox", "count": 2}
+                ],
+            },
+        }
+        proc = Process.from_yaml_dict(data)
+        assert proc.has_requirement("structure/smithy_forge") is True
+        assert proc.has_requirement("goods/tools/crafts/smithing/hammer") is True
+        assert proc.has_requirement("social/role/blacksmith") is True
+        assert proc.has_requirement("source/animal/domestic/ox") is True
+        assert proc.has_requirement("nonexistent") is False
+
 
 class TestProcessRepr:
     def test_repr(self):

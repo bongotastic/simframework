@@ -371,6 +371,47 @@ class Process:
             except Exception:
                 continue
         return False
-    
+
+    def has_output(self, identifier: str) -> bool:
+        """Return True if this process has an output that matches `identifier`.
+
+        Matching logic mirrors `has_input`:
+        - If an output's item equals `identifier`, it's a match.
+        - If an output has `quantity_variants` containing `identifier` as a key, it's a match.
+        """
+        if not identifier:
+            return False
+        for io in self.outputs:
+            try:
+                if getattr(io, "item", None) == identifier:
+                    return True
+                qvars = getattr(io, "quantity_variants", None)
+                if isinstance(qvars, dict) and identifier in qvars:
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def has_requirement(self, identifier: str) -> bool:
+        """Return True if this process has a requirement matching `identifier`.
+
+        Matching logic:
+        - If a requirement's `item` equals `identifier`, it's a match. This
+          covers tools, infrastructure, labor (role), and animals (role).
+        """
+        if not identifier:
+            return False
+        for req in self.requirements:
+            try:
+                if getattr(req, "item", None) == identifier:
+                    return True
+                # Some requirements may store role as 'role' in properties
+                role = req.get_property("role") if hasattr(req, "get_property") else None
+                if role == identifier:
+                    return True
+            except Exception:
+                continue
+        return False
+
     def __repr__(self) -> str:
         return f"Process(path={self.path!r}, type={self.process_type.value}, duration={self.duration.base_duration}h, reqs={len(self.requirements)}, inputs={len(self.inputs)}, outputs={len(self.outputs)})"
