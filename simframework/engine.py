@@ -336,9 +336,9 @@ class SimulationEngine:
 
         for proc in self.processes.values():
             try:
-                if want_input and not proc.has_input(input):
+                if want_input and not proc.has_input(input.full_path() if hasattr(input, "full_path") else input):
                     continue
-                if want_output and not proc.has_output(output):
+                if want_output and not proc.has_output(output.full_path() if hasattr(output, "full_path") else output):
                     continue
                 results.append(proc)
             except Exception:

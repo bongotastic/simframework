@@ -16,7 +16,19 @@ def main():
     # set inception time to July 6, 770 AD (demonstration only)
     sim.inception_time = datetime(770, 7, 6)
 
-    print("DemesneSimulation created; inception_time=", sim.inception_time)
+    landplot = sim.create_landplot(
+        identifier="demo-plot",
+        stage_path="land/cultivated/crop/growing/early",
+        vegetation_path="source/plant/species/cereal/wheat",
+        acreage=5.0,
+    )
+
+    # Retrieve the instance of a LandPlot process 
+    proc = sim.processes.get("process/crop/growth")
+    proc2 = sim.get_process_including(input="land/cultivated/crop/growing/early")
+    print(proc)
+    
+    sim.run()
 
 
 if __name__ == "__main__":

@@ -21,7 +21,6 @@ class Event:
     data: Dict[str, Any] = field(default_factory=dict)
     timespan: datetime.timedelta = field(default_factory=lambda: datetime.timedelta(0))
     scope: Optional["Scope"] = None
-    # `system` is retained for backward compatibility but holds an `Entity`.
     system: Optional["Entity"] = None
 
     def __repr__(self) -> str:  # pragma: no cover - trivial

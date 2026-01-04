@@ -1,6 +1,19 @@
 # Demesne domain taxonomy
 name: Demesne
 scopes:
+  # --- Event related taxonomy ---
+  - path: heartbeat
+  - path: labour # Labor resolution
+  - path: transit # Movement of goods/people between locations
+  - path: natural 
+  - path: natural/weather # weather variation events
+  - path: natural/weather/season # seasonal weather patterns
+  - path: natural/spoilage # decay of organic materials
+  - path: natural/lifecycle # growth cycles of plants/animals
+  - path: personal # Personal events affecting humans and beasts
+
+
+  # --- Land defined tangible assets grounded in the manorial estate ---
   - path: land
   - path: land/cultivated
   
@@ -97,6 +110,7 @@ scopes:
   - path: social/status/slave
 
   # --- SOURCE TAXONOMY (Biological/Physical Origins) ---
+  # Source defines the origin of materials, organisms, and other entities
   - path: source
   
   # --- ANIMALS (Domestic and Wild) ---
@@ -126,6 +140,7 @@ scopes:
   - path: source/animal/aquatic/fish
 
   # --- SOCIAL ROLES (Manor roles) ---
+  # Roles are social constructs defining expected behaviors and duties
   - path: social/role
   - path: social/role/lord
   - path: social/role/steward
@@ -169,6 +184,7 @@ scopes:
   - path: social/role/kennel_master
 
 # Attribute taxonomy
+# Attrinutes are atttributable qualities of people in the simulation
   - path: attributes
   - path: attributes/skill
   - path: attributes/skill/cultivation    # Knowledge of soil, seasons, and plant cycles
@@ -185,6 +201,7 @@ scopes:
 
 
   # --- STRUCTURES (manorial estate buildings and works) ---
+  # A structure is a built asset fixed to land
   - path: item/structure
   - path: item/structure/manor_great_hall
   - path: item/structure/chapel_church
@@ -235,6 +252,8 @@ scopes:
   - path: item/structure/dye_works
   - path: item/structure/retting_pond # Specific water feature for rotting flax/hemp
 
+# Goods are items made of heterogeneous materials intended for use/trade
+# Tools are usually durable goods used to facilitate work
   - path: item/goods/tools
   - path: item/goods/tools/handtools
   - path: item/goods/tools/handtools/knife
@@ -251,8 +270,9 @@ scopes:
 
   # Agricultural Tools
   - path: item/goods/tools/agriculture
-  - path: item/goods/tools/agriculture/sickle
-  - path: item/goods/tools/agriculture/scythe
+  - path: item/goods/tools/agriculture/harvesting
+  - path: item/goods/tools/agriculture/harvesting/sickle
+  - path: item/goods/tools/agriculture/harvesting/scythe
   - path: item/goods/tools/agriculture/hoe
   - path: item/goods/tools/agriculture/spade
   - path: item/goods/tools/agriculture/mattock
@@ -336,6 +356,7 @@ scopes:
   - path: item/goods/tools/transport/tack/horseshoe      # Iron shoes (increasingly common in Carolingian era)
 
   # --- CONTAINERS (Preserved) ---
+  # containers are goods designed to hold other items, materials, or substances
   - path: item/goods/containers
   - path: item/goods/containers/storage
   - path: item/goods/containers/storage/barrel
@@ -366,10 +387,19 @@ scopes:
   - path: item/goods/food/pottage
 
   # --- INTERMEDIATE GOODS ---
+  # Stock materials used in crafting finished goods
   - path: item/goods/stock
   
   # Wood Stock
   - path: item/goods/stock/wood
+  - path: item/goods/stock/wood/timber
+  - path: item/goods/stock/wood/elastic       # Ash, Hickory (Shock absorption)
+  - path: item/goods/stock/wood/structural    # Oak, Elm (Durability)
+  - path: item/goods/stock/wood/fine          # Boxwood, Fruitwood (Turning/Carving)
+  - path: item/goods/stock/wood/coppice       # Hazel, Willow (Flexible shoots)
+  - path: item/goods/stock/wood/resin         # Pine pitch
+  - path: item/goods/stock/wood/seasoned      # Seasoned/air-dried timber for charcoal/woodwork
+
   - path: item/goods/stock/wood/billet      # Split/hewn logs (Handles, Spokes)
   - path: item/goods/stock/wood/plank       # Radially split boards (Construction)
   - path: item/goods/stock/wood/withe       # Green soaked rods (Binding/Hoops)
@@ -429,24 +459,10 @@ scopes:
   - path: source/inorganic/water
   - path: source/inorganic/water/drinking_water
   - path: source/inorganic/water/dirty_water
-
-  # TIER 1: RAW RESOURCES (Extraction)
-  - path: item/organic/plant/timber
-  - path: item/organic/plant/timber/elastic       # Ash, Hickory (Shock absorption)
-  - path: item/organic/plant/timber/structural    # Oak, Elm (Durability)
-  - path: item/organic/plant/timber/fine          # Boxwood, Fruitwood (Turning/Carving)
-  - path: item/organic/plant/timber/coppice       # Hazel, Willow (Flexible shoots)
-  - path: item/organic/plant/timber/resin         # Pine pitch
-  - path: item/organic/plant/timber/seasoned      # Seasoned/air-dried timber for charcoal/woodwork
-
   - path: source/inorganic/mineral
   - path: source/inorganic/mineral/iron_ore     # Bog iron / Rock ore
   - path: source/inorganic/mineral/stone        # Basalt (Quern), Flint
   - path: source/inorganic/mineral/clay         # River clay
-
-
-
-
 
   # --- PLANT TAXONOMY (economic species for the Demesne) ---
   - path: source/plant
@@ -505,6 +521,9 @@ scopes:
   # --- ITEM TAXONOMY ---
   - path: item
   - path: item/organic
+  - path: item/organic/waste
+  - path: item/organic/waste/rotting_matter
+  - path: item/organic/waste/compost
 
   # --- ANIMAL PRODUCTS ---
   - path: item/organic/animal
@@ -528,6 +547,7 @@ scopes:
 
   # --- PLANT PRODUCTS (Harvested/processed outputs) ---
   - path: item/organic/plant
+
  # Edible Harvest (Primary)
   - path: item/organic/plant/grain
   - path: item/organic/plant/seed

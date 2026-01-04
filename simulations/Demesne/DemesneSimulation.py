@@ -78,12 +78,18 @@ class DemesneSimulation(SimulationEngine):
 
         # Add an event to register the landplot progress
         next_stage = self.get_process_including(input=stage)
+
+        # Identify a natural process to advance the landplot's stage
+        for element in next_stage:
+            if element.is_natural():
+                next_stage = element
+                break
+
         if next_stage is not None:
             self.scheduler.schedule(
                 delay= next_stage.get_duration(veg), # tries to get correct duration, assume inception is now. 
-                callback=next_stage.execute,
                 entity=lp,
-                message=f"Process {next_stage.template.name} for LandPlot {lp.id}",
+                message=f"Process {next_stage.name} for LandPlot {lp.name}",
             )
 
         return lp
