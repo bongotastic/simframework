@@ -204,6 +204,61 @@ class SimulationEngine:
 
         return None
 
+    def get_process_including(self, input: str = "", output: str = "") -> list:
+        """Return a list of Processes that include the specified input and/or output.
+
+        Behavior:
+          - If `input` is provided, process must include that item as an input
+            (either exact item match or present in an input's quantity variants).
+          - If `output` is provided, process must include that item as an output
+            (either exact item match or present in an output's quantity variants).
+          - If neither is provided, returns all loaded processes.
+        """
+        results = []
+        want_input = bool(input)
+        want_output = bool(output)
+
+        for proc in self.processes.values():
+            try:
+                ok_in = True
+                ok_out = True
+
+                if want_input:
+                    ok_in = False
+                    for io in getattr(proc, "inputs", []):
+                        try:
+                            if getattr(io, "item", None) == input:
+                                ok_in = True
+                                break
+                            qvars = getattr(io, "quantity_variants", None)
+                            if isinstance(qvars, dict) and input in qvars:
+                                ok_in = True
+                                break
+                        except Exception:
+                            continue
+
+                if want_output:
+                    ok_out = False
+                    for io in getattr(proc, "outputs", []):
+                        try:
+                            if getattr(io, "item", None) == output:
+                                ok_out = True
+                                break
+                            qvars = getattr(io, "quantity_variants", None)
+                            if isinstance(qvars, dict) and output in qvars:
+                                ok_out = True
+                                break
+                        except Exception:
+                            continue
+
+                if ok_in and ok_out:
+                    results.append(proc)
+            except Exception:
+                # Skip process on unexpected errors
+                continue
+
+        return results
+
     def determine_spoilage_probability(self, age: float, median_time: float, beta: float = 10.0) -> float:
         """Return the log-logistic cumulative failure probability at `age`.
 
