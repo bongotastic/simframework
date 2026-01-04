@@ -35,6 +35,49 @@ class SimulationEngine:
         # Inception time (simulation start) stored for external access
         self.inception_time: Optional[datetime.datetime] = self.scheduler.now
 
+        # Load domain and processes (if available). Accept explicit paths via
+        # constructor parameters in the future; by default attempt to load the
+        # Demesne simulation's domain and processes if present in the workspace.
+        from pathlib import Path
+        try:
+            from .scope import Domain
+            from .process import Process
+            import yaml
+        except Exception:
+            Domain = None
+            Process = None
+            yaml = None
+
+        self.domain = None
+        self.processes: Dict[str, "Process"] = {}
+
+        # Try to find the Demesne domain files relative to the repo root
+        repo_root = Path.cwd()
+        domain_candidate = repo_root / "simulations" / "Demesne" / "domain.yaml"
+        processes_candidate = repo_root / "simulations" / "Demesne" / "domain_processes.yaml"
+
+        if Domain is not None and domain_candidate.exists():
+            try:
+                self.domain = Domain.from_yaml(str(domain_candidate))
+            except Exception:
+                self.domain = None
+
+        if Process is not None and yaml is not None and processes_candidate.exists():
+            try:
+                with open(processes_candidate, "r") as fh:
+                    pd = yaml.safe_load(fh)
+                for proc_dict in pd.get("processes", []):
+                    try:
+                        proc = Process.from_yaml_dict(proc_dict)
+                        self.processes[proc.path] = proc
+                    except Exception:
+                        # Best-effort: skip malformed process entries
+                        continue
+            except Exception:
+                # Ignore process load errors and continue
+                pass
+
+
     # --- entity registry ---
     def add_entity(self, entity: Entity, entity_id: Optional[str] = None) -> str:
         """Register an `Entity` and return its id.
