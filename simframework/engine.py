@@ -79,6 +79,16 @@ class SimulationEngine:
                 # Ignore process load errors and continue
                 pass
 
+        # Schedule the initial heartbeat event so designers don't need to.
+        # We keep track of the latest heartbeat event id for potential introspection.
+        try:
+            hb_event = Event(data={"heartbeat": True})
+            _, hb_id = self.scheduler.insert_event(hb_event, trigger_time=self.heartbeat)
+            self._heartbeat_event_id: Optional[int] = hb_id
+        except Exception:
+            # If scheduling fails for any reason, record no heartbeat id but do not raise.
+            self._heartbeat_event_id = None
+
 
     # --- entity registry ---
     def add_entity(self, entity: Entity, entity_id: Optional[str] = None) -> str:
@@ -173,6 +183,29 @@ class SimulationEngine:
 
     def run(self, until: Optional[datetime.datetime] = None) -> None:
         self.scheduler.run(until=until)
+
+    def step(self) -> Optional[Event]:
+        """Step the engine: advance to and return the next event.
+
+        If the event is a heartbeat (Event.data contains {'heartbeat': True}),
+        schedule the next heartbeat automatically using the engine's
+        `heartbeat` interval so simulation designers don't need to manage it.
+        """
+        evt = self.scheduler.step()
+        if evt is None:
+            return None
+
+        try:
+            if isinstance(evt.data, dict) and evt.data.get("heartbeat"):
+                # create and schedule next heartbeat relative to scheduler.now
+                next_hb = Event(data={"heartbeat": True})
+                _, new_id = self.scheduler.insert_event(next_hb, trigger_time=self.heartbeat)
+                self._heartbeat_event_id = new_id
+        except Exception:
+            # Best-effort: do not raise if heartbeat handling fails
+            pass
+
+        return evt
 
     def get_process(self, identifier: str) -> Optional["Process"]:
         """Retrieve a loaded Process by path or name.
@@ -353,7 +386,13 @@ class SimulationEngine:
         event times (if any), and a compact listing of queued events:
           ID | YYYY-MM-DD HH:MM:SS | scope | timespan
         """
-        events = self.scheduler.peek_events()
+        # Peek events from scheduler but hide internal heartbeat events
+        raw_events = self.scheduler.peek_events()
+        events = [
+            (run_at, event)
+            for run_at, event in raw_events
+            if not (isinstance(getattr(event, "data", None), dict) and event.data.get("heartbeat"))
+        ]
         count = len(events)
         now = self.scheduler.now
 
