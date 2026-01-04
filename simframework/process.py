@@ -398,6 +398,18 @@ class Process:
                 continue
         return False
 
+    def is_natural(self) -> bool:
+        """Return True when this Process is defined as a natural process.
+
+        This checks the `process_type` attribute which is set during
+        deserialization from the domain/process YAML. Returns False on any
+        unexpected state.
+        """
+        try:
+            return self.process_type == ProcessType.NATURAL
+        except Exception:
+            return False
+
     def has_requirement(self, identifier: str) -> bool:
         """Return True if this process has a requirement matching `identifier`.
 
