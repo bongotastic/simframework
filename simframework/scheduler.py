@@ -6,7 +6,7 @@ support stochastic events, priorities, distributed scheduling, or generative-AI-
 event handlers.
 """
 from heapq import heappush, heappop
-from typing import Any, List, Tuple, Optional, Union, TYPE_CHECKING
+from typing import Any, Dict, List, Set, Tuple, Optional, Union, TYPE_CHECKING
 import datetime
 
 try:
@@ -33,6 +33,10 @@ class Scheduler:
     - `schedule(delay, **data)`: schedule an event after `delay`.
     - `step()`: execute the next scheduled event and advance time.
     - `run(until=None)`: run until queue empty or until datetime `until`.
+    - `get_events(scope, system)`: retrieve events filtered by scope/system.
+    - `delete_events(scope, system)`: cancel events (lazy deletion).
+    - `reschedule_event(event_id, delta)`: reschedule event by a time delta.
+    - `cleanup()`: remove cancelled events from the heap.
     """
 
     def __init__(self, start_time: Optional[datetime.datetime] = None):
@@ -45,6 +49,10 @@ class Scheduler:
         # Queue stores (run_at, counter, event)
         self._queue: List[Tuple[datetime.datetime, int, Event]] = []
         self._counter: int = 0
+        # Lazy deletion: track cancelled event IDs
+        self._cancelled: Set[int] = set()
+        # Map event_id -> (run_at, event) for reschedule lookups
+        self._event_map: Dict[int, Tuple[datetime.datetime, Event]] = {}
 
     @property
     def now(self) -> datetime.datetime:
@@ -86,9 +94,11 @@ class Scheduler:
         if event is None:
             event = Event(data=data)
         
-        heappush(self._queue, (run_at, self._counter, event))
+        event_id = self._counter
+        heappush(self._queue, (run_at, event_id, event))
+        self._event_map[event_id] = (run_at, event)
         self._counter += 1
-        return run_at, self._counter - 1
+        return run_at, event_id
 
     def insert_event(self, event: Event, trigger_time: Union[datetime.datetime, float, datetime.timedelta], *, scope: Optional["Scope"] = None, system: Optional["Entity"] = None) -> Tuple[datetime.datetime, int]:
         """Insert a pre-built `Event` into the scheduler.
@@ -124,9 +134,11 @@ class Scheduler:
         else:
             raise TypeError("trigger_time must be datetime, seconds (float/int), or timedelta")
 
-        heappush(self._queue, (run_at, self._counter, event))
+        event_id = self._counter
+        heappush(self._queue, (run_at, event_id, event))
+        self._event_map[event_id] = (run_at, event)
         self._counter += 1
-        return run_at, self._counter - 1
+        return run_at, event_id
 
     def pop_event(self, scope: Optional["Scope"] = None, *, system: Optional["Entity"] = None, include_descendants: bool = False) -> Optional[Event]:
         """Remove and return the next scheduled Event.
@@ -142,11 +154,19 @@ class Scheduler:
 
         temp: List[Tuple[datetime.datetime, int, Event]] = []
         found_event: Optional[Event] = None
+        found_idx: Optional[int] = None
 
         # Pop items until we find a matching scope/system (or run out).
         # Keep others in temp so we can push them back preserving heap order.
         while self._queue:
             run_at, idx, event = heappop(self._queue)
+            
+            # Skip cancelled events (lazy deletion)
+            if idx in self._cancelled:
+                self._cancelled.discard(idx)
+                self._event_map.pop(idx, None)
+                continue
+            
             # Scope matching supports optional descendant inclusion
             if scope is None:
                 matches_scope = True
@@ -166,12 +186,17 @@ class Scheduler:
 
             if matches_scope and matches_system:
                 found_event = event
+                found_idx = idx
                 break
             temp.append((run_at, idx, event))
 
         # Push back any items we removed that were not the target.
         for item in temp:
             heappush(self._queue, item)
+
+        # Clean up tracking for the popped event
+        if found_idx is not None:
+            self._event_map.pop(found_idx, None)
 
         return found_event
 
@@ -185,11 +210,26 @@ class Scheduler:
         return self.pop_event(system=system, include_descendants=False)
 
     def step(self) -> Optional[Event]:
-        if not self._queue:
-            return None
-        run_at, _idx, event = heappop(self._queue)
-        self._time = run_at
-        return event
+        """Execute the next scheduled event and advance simulation time.
+        
+        Skips any events that have been cancelled (lazy deletion).
+        Returns None if the queue is empty or all remaining events are cancelled.
+        """
+        while self._queue:
+            run_at, idx, event = heappop(self._queue)
+            
+            # Skip cancelled events (lazy deletion)
+            if idx in self._cancelled:
+                self._cancelled.discard(idx)
+                self._event_map.pop(idx, None)
+                continue
+            
+            # Valid event found
+            self._time = run_at
+            self._event_map.pop(idx, None)
+            return event
+        
+        return None
 
     def run(self, until: Optional[datetime.datetime] = None) -> None:
         """Run events until queue empty or until the `until` datetime.
@@ -228,6 +268,10 @@ class Scheduler:
         """
         result = []
         for run_at, idx, event in self._queue:
+            # Skip cancelled events
+            if idx in self._cancelled:
+                continue
+            
             # Scope filtering supports descendant matching when requested
             if scope is not None:
                 if event.scope is None:
@@ -244,13 +288,188 @@ class Scheduler:
                 if event.system != system:
                     continue
 
-            result.append((run_at, event))
+            result.append((run_at, idx, event))
 
             # Stop if limit reached
             if limit is not None and len(result) >= limit:
                 break
 
+        # Return without idx for backward compatibility
+        return [(run_at, event) for run_at, idx, event in result]
+
+    def get_events(self, scope: Optional["Scope"] = None, system: Optional["Entity"] = None, *, include_descendants: bool = True) -> List[Tuple[int, datetime.datetime, Event]]:
+        """Retrieve scheduled events filtered by scope and/or entity.
+
+        Returns a list of (event_id, run_at, Event) tuples in chronological order,
+        filtered by scope and/or system. Cancelled events are excluded.
+
+        Args:
+            scope: Optional Scope to filter by. When `include_descendants` is True
+                (the default), scopes that are descendants also match.
+            system: Optional Entity to filter by (exact match).
+            include_descendants: When True, descendant scopes of `scope` also match.
+
+        Returns:
+            A list of (event_id, datetime, Event) tuples matching the filters.
+        """
+        result = []
+        for run_at, idx, event in sorted(self._queue):
+            # Skip cancelled events
+            if idx in self._cancelled:
+                continue
+            
+            # Scope filtering
+            if scope is not None:
+                if event.scope is None:
+                    continue
+                if include_descendants:
+                    if not (event.scope == scope or scope.is_ancestor_of(event.scope)):
+                        continue
+                else:
+                    if event.scope != scope:
+                        continue
+
+            # System filtering
+            if system is not None:
+                if event.system != system:
+                    continue
+
+            result.append((idx, run_at, event))
+
         return result
+
+    def delete_events(self, scope: Optional["Scope"] = None, system: Optional["Entity"] = None, *, include_descendants: bool = True) -> int:
+        """Cancel events matching the given filters (lazy deletion).
+
+        Events are marked as cancelled but remain in the heap until they are
+        naturally popped or `cleanup()` is called. Returns the count of events
+        cancelled.
+
+        Args:
+            scope: Optional Scope to filter by. When `include_descendants` is True
+                (the default), scopes that are descendants also match.
+            system: Optional Entity to filter by (exact match).
+            include_descendants: When True, descendant scopes of `scope` also match.
+
+        Returns:
+            The number of events cancelled.
+        """
+        if scope is None and system is None:
+            raise ValueError("At least one of scope or system must be provided")
+
+        matching = self.get_events(scope=scope, system=system, include_descendants=include_descendants)
+        cancelled_count = 0
+        for event_id, run_at, event in matching:
+            if event_id not in self._cancelled:
+                self._cancelled.add(event_id)
+                cancelled_count += 1
+
+        return cancelled_count
+
+    def cancel_event(self, event_id: int) -> bool:
+        """Cancel a single event by its ID (lazy deletion).
+
+        The event is marked as cancelled but remains in the heap until it is
+        naturally popped or `cleanup()` is called.
+
+        Args:
+            event_id: The ID returned when the event was scheduled.
+
+        Returns:
+            True if the event was found and cancelled, False if it was
+            already cancelled or not found.
+        """
+        if event_id in self._cancelled:
+            return False
+        if event_id not in self._event_map:
+            return False
+        self._cancelled.add(event_id)
+        return True
+
+    def reschedule_event(self, event_id: int, delta: Union[float, datetime.timedelta]) -> Optional[Tuple[datetime.datetime, int]]:
+        """Reschedule an event by a given time delta.
+
+        The original event is cancelled and a new event is inserted with the
+        adjusted trigger time. The new event gets a new event_id.
+
+        Args:
+            event_id: The ID of the event to reschedule.
+            delta: Time adjustment - positive values move the event later,
+                negative values move it earlier. Can be float (seconds) or timedelta.
+
+        Returns:
+            A tuple of (new_run_at, new_event_id) if rescheduled successfully,
+            or None if the event was not found or already cancelled.
+        """
+        if event_id in self._cancelled:
+            return None
+        if event_id not in self._event_map:
+            return None
+
+        old_run_at, event = self._event_map[event_id]
+
+        # Calculate new run time
+        if isinstance(delta, (int, float)):
+            delta = datetime.timedelta(seconds=float(delta))
+        elif not isinstance(delta, datetime.timedelta):
+            raise TypeError("delta must be float (seconds) or timedelta")
+
+        new_run_at = old_run_at + delta
+
+        # Cancel the old event
+        self._cancelled.add(event_id)
+
+        # Insert the event at the new time
+        new_id = self._counter
+        heappush(self._queue, (new_run_at, new_id, event))
+        self._event_map[new_id] = (new_run_at, event)
+        self._counter += 1
+
+        return new_run_at, new_id
+
+    def cleanup(self) -> int:
+        """Remove cancelled events from the heap.
+
+        Call this periodically if many events have been cancelled to reclaim
+        memory and improve performance. This rebuilds the heap without the
+        cancelled events.
+
+        Returns:
+            The number of stale events removed.
+        """
+        if not self._cancelled:
+            return 0
+
+        # Filter out cancelled events
+        original_len = len(self._queue)
+        self._queue = [
+            (run_at, idx, event)
+            for run_at, idx, event in self._queue
+            if idx not in self._cancelled
+        ]
+
+        # Clean up tracking
+        for idx in self._cancelled:
+            self._event_map.pop(idx, None)
+
+        removed_count = original_len - len(self._queue)
+        self._cancelled.clear()
+
+        # Rebuild heap structure (list comprehension doesn't preserve heap property)
+        from heapq import heapify
+        heapify(self._queue)
+
+        return removed_count
+
+    @property
+    def pending_count(self) -> int:
+        """Return the count of non-cancelled events in the queue."""
+        return len(self._queue) - len(self._cancelled)
+
+    @property
+    def cancelled_count(self) -> int:
+        """Return the count of cancelled events still in the queue."""
+        return len(self._cancelled)
 
 
 # Hierarchical system/descendant matching and SystemInstance types were
