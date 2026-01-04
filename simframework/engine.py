@@ -18,7 +18,7 @@ from .event import Event
 
 
 class SimulationEngine:
-    def __init__(self, start_time: Optional[datetime.datetime] = None):
+    def __init__(self, start_time: Optional[datetime.datetime] = None, identifier: Optional[str] = None):
         """Create an engine with an attached `Scheduler` and empty registries.
 
         Args:
@@ -34,6 +34,12 @@ class SimulationEngine:
         self._entity_counter: int = 0
         # Inception time (simulation start) stored for external access
         self.inception_time: Optional[datetime.datetime] = self.scheduler.now
+
+        # Engine identifier used for logging (filename: {identifier}.log)
+        if identifier is None:
+            # generate a simple timestamp-based identifier when none provided
+            identifier = f"engine_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+        self.identifier: str = identifier
 
         # Load domain and processes (if available). Accept explicit paths via
         # constructor parameters in the future; by default attempt to load the
@@ -244,6 +250,30 @@ class SimulationEngine:
             pass
 
         return evt
+
+    def log(self, message: Any) -> None:
+        """Append a message to the engine's log file prefixed with the current time.
+
+        The log file is named `{identifier}.log` and opened in append mode.
+        The timestamp used is the scheduler's `now` when available, otherwise
+        the system wall-clock `datetime.datetime.now()`.
+        """
+        timestamp = None
+        try:
+            if hasattr(self, "scheduler") and self.scheduler is not None:
+                timestamp = self.scheduler.now
+        except Exception:
+            timestamp = None
+
+        if timestamp is None:
+            timestamp = datetime.datetime.now()
+
+        if not isinstance(message, str):
+            message = str(message)
+
+        filename = f"{self.identifier}.log"
+        with open(filename, "a", encoding="utf-8") as fh:
+            fh.write(f"{timestamp.isoformat()} {message}\n")
 
     def get_process(self, identifier: str) -> Optional["Process"]:
         """Retrieve a loaded Process by path or name.
