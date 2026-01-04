@@ -478,6 +478,105 @@ class Process:
                 continue
         return None
 
+    def get_outputs(self) -> Dict[str, Dict[str, Any]]:
+        """Return a simple mapping of output item -> properties dict.
+
+        Mirrors the semantics of `get_inputs()` but for outputs. Properties
+        will include `quantity`, `quantity_variants` and any extra properties
+        (e.g., `skill_modifier`).
+        """
+        results: Dict[str, Dict[str, Any]] = {}
+        for io in self.outputs:
+            try:
+                item = getattr(io, "item", None)
+                if not isinstance(item, str) or not item:
+                    continue
+                props: Dict[str, Any] = {}
+                props.update(getattr(io, "properties", {}) or {})
+                props.setdefault("quantity", getattr(io, "quantity", None))
+                props.setdefault("quantity_variants", getattr(io, "quantity_variants", {}))
+                results[item] = props
+            except Exception:
+                continue
+
+        return results
+
+    def has_as_output(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Return the output properties dict when this process has `identifier` as output.
+
+        Uses the same prefix-matching semantics as `has_as_input()`.
+        """
+        if not identifier:
+            return None
+        norm = identifier.strip("/")
+        outputs = self.get_outputs()
+        for item_path, props in outputs.items():
+            try:
+                if item_path.strip("/").startswith(norm):
+                    return props
+                qvars = props.get("quantity_variants")
+                if isinstance(qvars, dict):
+                    for k in qvars.keys():
+                        if isinstance(k, str) and k.strip("/").startswith(norm):
+                            return props
+            except Exception:
+                continue
+        return None
+
+    def get_requirements(self) -> Dict[str, Dict[str, Any]]:
+        """Return a mapping of requirement item -> properties dict.
+
+        Each requirement type contributes a properties dict with sensible
+        keys: `mtbf` for `RequirementTool`, `skill` and `count` for
+        `RequirementLabor`, `count` and any `properties` for
+        `RequirementAnimal`, and an empty dict for
+        `RequirementInfrastructure` unless extra properties are present.
+        """
+        results: Dict[str, Dict[str, Any]] = {}
+        for req in self.requirements:
+            try:
+                item = getattr(req, "item", None)
+                if not isinstance(item, str) or not item:
+                    continue
+                props: Dict[str, Any] = {}
+                # Tool
+                if isinstance(req, RequirementTool):
+                    props["mtbf"] = req.mtbf
+                # Labor
+                if isinstance(req, RequirementLabor):
+                    props["skill"] = req.skill
+                    props["count"] = req.count
+                # Animal
+                if isinstance(req, RequirementAnimal):
+                    props.update(getattr(req, "properties", {}) or {})
+                    props.setdefault("count", req.count)
+                # Infrastructure: include properties if any
+                if isinstance(req, RequirementInfrastructure):
+                    props.update(getattr(req, "properties", {}) or {})
+
+                results[item] = props
+            except Exception:
+                continue
+
+        return results
+
+    def has_requirement(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Return the requirement properties dict when this process has `identifier` as a requirement.
+
+        Matching uses prefix semantics similar to inputs/outputs.
+        """
+        if not identifier:
+            return None
+        norm = identifier.strip("/")
+        reqs = self.get_requirements()
+        for item_path, props in reqs.items():
+            try:
+                if item_path.strip("/").startswith(norm):
+                    return props
+            except Exception:
+                continue
+        return None
+
     def has_requirement(self, identifier: str) -> bool:
         """Return True if this process has a requirement matching `identifier`.
 
