@@ -252,6 +252,45 @@ class TestProcessFromYAML:
         assert proc.waste[0].item == "item/organic/waste/slag"
         assert proc.waste[0].quantity == 0.2
 
+    def test_has_input(self):
+        # Simple input match
+        data = {
+            "path": "process/spoilage/flour",
+            "name": "Flour Spoilage",
+            "type": "natural",
+            "time": {"mtbf": 4000.0},
+            "inputs": {
+                "materials": [{"item": "item/organic/plant/flour"}]
+            },
+            "outputs": {
+                "products": [{"item": "item/organic/waste/rotting_matter"}]
+            },
+        }
+        proc = Process.from_yaml_dict(data)
+        assert proc.has_input("item/organic/plant/flour") is True
+        assert proc.has_input("item/organic/plant/grain") is False
+
+    def test_has_input_variants(self):
+        # Quantity variants should be treated as inputs for matching
+        data = {
+            "path": "process/processing/threshing",
+            "name": "Threshing",
+            "type": "manual",
+            "time": {"base_duration": 8.0},
+            "inputs": {
+                "materials": [
+                    {"item": "item/organic/plant/sheaf", "quantity_by_plant": {"source/plant/species/cereal/wheat": 900.0}}
+                ]
+            },
+            "outputs": {
+                "products": [{"item": "item/organic/plant/grain"}]
+            },
+        }
+        proc = Process.from_yaml_dict(data)
+        assert proc.has_input("item/organic/plant/sheaf") is True
+        assert proc.has_input("source/plant/species/cereal/wheat") is True
+        assert proc.has_input("source/plant/species/legume/pea") is False
+
 
 class TestProcessRepr:
     def test_repr(self):

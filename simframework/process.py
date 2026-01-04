@@ -351,6 +351,26 @@ class Process:
     def get_duration(self, item: Optional[str] = None) -> float:
         """Get process duration, optionally specific to a taxonomy item."""
         return self.duration.get_duration(item)
+
+    def has_input(self, identifier: str) -> bool:
+        """Return True if this process has an input that matches `identifier`.
+
+        Matching logic:
+        - If an input's item equals `identifier`, it's a match.
+        - If an input has `quantity_variants` containing `identifier` as a key, it's a match.
+        """
+        if not identifier:
+            return False
+        for io in self.inputs:
+            try:
+                if getattr(io, "item", None) == identifier:
+                    return True
+                qvars = getattr(io, "quantity_variants", None)
+                if isinstance(qvars, dict) and identifier in qvars:
+                    return True
+            except Exception:
+                continue
+        return False
     
     def __repr__(self) -> str:
         return f"Process(path={self.path!r}, type={self.process_type.value}, duration={self.duration.base_duration}h, reqs={len(self.requirements)}, inputs={len(self.inputs)}, outputs={len(self.outputs)})"
