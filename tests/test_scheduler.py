@@ -61,7 +61,8 @@ class TestScheduleMethod:
         """schedule should accept float delay (seconds)."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
-        run_at, idx = s.schedule(5.0)
+        # `schedule` accepts a timedelta delay in the strict API
+        run_at, idx = s.schedule(timedelta(seconds=5.0))
         assert run_at == start + timedelta(seconds=5.0)
         assert idx == 0
 
@@ -79,7 +80,8 @@ class TestScheduleMethod:
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
         absolute_time = datetime.datetime(2025, 2, 1, 12, 30, 0)
-        run_at, idx = s.schedule(absolute_time)
+        # schedule accepts a timedelta relative to `now`; convert absolute
+        run_at, idx = s.schedule(absolute_time - start)
         assert run_at == absolute_time
         assert idx == 0
 
@@ -87,7 +89,7 @@ class TestScheduleMethod:
         """schedule should reject negative float delay."""
         s = Scheduler()
         with pytest.raises(ValueError):
-            s.schedule(-1.0)
+            s.schedule(timedelta(seconds=-1))
 
     def test_schedule_negative_delay_timedelta(self):
         """schedule should reject negative timedelta delay."""
@@ -104,9 +106,9 @@ class TestScheduleMethod:
     def test_schedule_increments_counter(self):
         """schedule should increment event counter for unique IDs."""
         s = Scheduler()
-        _, idx1 = s.schedule(1.0)
-        _, idx2 = s.schedule(2.0)
-        _, idx3 = s.schedule(3.0)
+        _, idx1 = s.schedule(timedelta(seconds=1.0))
+        _, idx2 = s.schedule(timedelta(seconds=2.0))
+        _, idx3 = s.schedule(timedelta(seconds=3.0))
         assert idx1 == 0
         assert idx2 == 1
         assert idx3 == 2
@@ -115,7 +117,7 @@ class TestScheduleMethod:
         """schedule should accept pre-built Event objects."""
         s = Scheduler()
         event = Event(data={"custom": "data"}, timespan=timedelta(hours=1))
-        run_at, idx = s.schedule(5.0, event=event)
+        run_at, idx = s.schedule(timedelta(seconds=5.0), event=event)
         assert run_at is not None
         assert idx == 0
 
@@ -282,7 +284,7 @@ class TestStepAndRunMethods:
         """step should advance now to event's trigger time."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
-        s.schedule(5.0)
+        s.schedule(timedelta(seconds=5.0))
         s.step()
         assert s.now == start + timedelta(seconds=5.0)
 
@@ -299,9 +301,9 @@ class TestStepAndRunMethods:
         """Multiple step calls should process events in order."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
-        s.schedule(1.0)
-        s.schedule(2.0)
-        s.schedule(3.0)
+        s.schedule(timedelta(seconds=1.0))
+        s.schedule(timedelta(seconds=2.0))
+        s.schedule(timedelta(seconds=3.0))
         
         s.step()
         assert s.now == start + timedelta(seconds=1.0)
@@ -321,9 +323,9 @@ class TestStepAndRunMethods:
         """run should process all scheduled events."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
-        s.schedule(1.0)
-        s.schedule(2.0)
-        s.schedule(3.0)
+        s.schedule(timedelta(seconds=1.0))
+        s.schedule(timedelta(seconds=2.0))
+        s.schedule(timedelta(seconds=3.0))
         s.run()
         assert s.now == start + timedelta(seconds=3.0)
         assert s.pop_event() is None
@@ -332,9 +334,9 @@ class TestStepAndRunMethods:
         """run(until=T) should stop processing events after time T."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
-        s.schedule(1.0)
-        s.schedule(2.0)
-        s.schedule(3.0)
+        s.schedule(timedelta(seconds=1.0))
+        s.schedule(timedelta(seconds=2.0))
+        s.schedule(timedelta(seconds=3.0))
         until_time = start + timedelta(seconds=2.5)
         s.run(until=until_time)
         assert s.now == until_time
@@ -347,7 +349,7 @@ class TestStepAndRunMethods:
         """run(until=T) should advance now to T even if no events fire after."""
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
-        s.schedule(1.0)
+        s.schedule(timedelta(seconds=1.0))
         until_time = start + timedelta(seconds=5.0)
         s.run(until=until_time)
         assert s.now == until_time
@@ -362,10 +364,10 @@ class TestEventOrdering:
         s = Scheduler(start_time=start)
         
         # Insert events out of order
-        s.schedule(5.0)
-        s.schedule(1.0)
-        s.schedule(3.0)
-        s.schedule(2.0)
+        s.schedule(timedelta(seconds=5.0))
+        s.schedule(timedelta(seconds=1.0))
+        s.schedule(timedelta(seconds=3.0))
+        s.schedule(timedelta(seconds=2.0))
 
         s.step()
         assert s.now == start + timedelta(seconds=1.0)
@@ -381,9 +383,9 @@ class TestEventOrdering:
         start = datetime.datetime(2025, 1, 1, 0, 0, 0)
         s = Scheduler(start_time=start)
         
-        s.schedule(1.0, event=Event(data={"id": "a"}))
-        s.schedule(1.0, event=Event(data={"id": "b"}))
-        s.schedule(1.0, event=Event(data={"id": "c"}))
+        s.schedule(timedelta(seconds=1.0), event=Event(data={"id": "a"}))
+        s.schedule(timedelta(seconds=1.0), event=Event(data={"id": "b"}))
+        s.schedule(timedelta(seconds=1.0), event=Event(data={"id": "c"}))
 
         e1 = s.step()
         e2 = s.step()

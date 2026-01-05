@@ -64,40 +64,37 @@ class Scheduler:
             raise TypeError("now must be a datetime.datetime")
         self._time = value
 
-    def schedule(self, delay: Union[float, datetime.timedelta, datetime.datetime], event: Optional[Event] = None, **data) -> Tuple[datetime.datetime, int]:
-        """Schedule an event to run at a specific time or after a delay.
+    def schedule(self, delay: datetime.timedelta, event: Optional[Event] = None) -> Tuple[datetime.datetime, int]:
+        """Schedule an event to run after a timedelta delay.
 
-        `delay` may be:
-        - an absolute `datetime.datetime` (trigger time independent of scheduler's now)
-        - a float (seconds relative to scheduler's now)
-        - a `datetime.timedelta` (relative to scheduler's now)
-
-        If `event` is not provided, a new `Event` is created with `data` as its payload.
-
-        Returns the scheduled run time and an integer id.
+        Strict API: `delay` must be a `datetime.timedelta`.
+        If `event` is omitted a bare `Event()` will be created and scheduled.
         """
-        if isinstance(delay, datetime.datetime):
-            # Absolute trigger time, independent of _time
-            run_at = delay
-        elif isinstance(delay, (int, float)):
-            if delay < 0:
-                raise ValueError("delay must be >= 0")
-            delta = datetime.timedelta(seconds=float(delay))
-            run_at = self._time + delta
-        elif isinstance(delay, datetime.timedelta):
-            if delay.total_seconds() < 0:
-                raise ValueError("delay must be >= 0")
-            run_at = self._time + delay
-        else:
-            raise TypeError("delay must be datetime, float seconds, or timedelta")
+        if not isinstance(delay, datetime.timedelta):
+            raise TypeError("delay must be a datetime.timedelta")
+        if delay.total_seconds() < 0:
+            raise ValueError("delay timedelta must be >= 0")
 
         if event is None:
-            event = Event(data=data)
-        
+            event = Event()
+        if not isinstance(event, Event):
+            raise TypeError("event must be an Event instance if provided")
+
+        # Find the right time to schedule
+        run_at = self._time + delay
+
+        # Attach the timespan to the event
+        event.timespan = delay
+
+        # Event ID
         event_id = self._counter
+        event.id = event_id  # assign id to event for reference
+
+        # Push onto the heap
         heappush(self._queue, (run_at, event_id, event))
         self._event_map[event_id] = (run_at, event)
         self._counter += 1
+
         return run_at, event_id
 
     def insert_event(self, event: Event, trigger_time: Union[datetime.datetime, float, datetime.timedelta], *, scope: Optional["Scope"] = None, system: Optional["Entity"] = None) -> Tuple[datetime.datetime, int]:
@@ -119,7 +116,7 @@ class Scheduler:
         if scope is not None:
             event.scope = scope
         if system is not None:
-            event.system = system
+            event.entity_anchor = system
 
         if isinstance(trigger_time, datetime.datetime):
             run_at = trigger_time
@@ -182,7 +179,7 @@ class Scheduler:
             if system is not None:
                 # Entities are matched by identity equality. Hierarchical
                 # descendant matching was removed along with systems/agents.
-                matches_system = event.system == system
+                matches_system = event.entity_anchor == system
 
             if matches_scope and matches_system:
                 found_event = event
@@ -286,7 +283,7 @@ class Scheduler:
 
             # System filtering supports descendant matching when requested
             if system is not None:
-                if event.system != system:
+                if event.entity_anchor != system:
                     continue
 
             result.append((run_at, idx, event))
@@ -332,7 +329,7 @@ class Scheduler:
 
             # System filtering
             if system is not None:
-                if event.system != system:
+                if event.entity_anchor != system:
                     continue
 
             result.append((idx, run_at, event))
