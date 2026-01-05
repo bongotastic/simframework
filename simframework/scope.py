@@ -90,6 +90,12 @@ class Domain:
         self.name = name
         self.taxonomy: Dict[str, Scope] = {}  # full_path -> Scope
         self.processes: Dict[str, Dict[str, Any]] = {}  # process_path -> process_dict
+    
+
+        # Always register a heartbeat scope so engine-level events can be
+        # scheduled against it and tests (and engine code) can rely on it.
+        heartbeat_scope = Scope(name="heartbeat")
+        self.register_scope(heartbeat_scope)
 
     def register_scope(self, scope: Scope) -> None:
         """Register a scope in this domain.
@@ -165,6 +171,28 @@ class Domain:
             process_data: The process definition dict from YAML.
         """
         self.processes[process_path] = process_data
+
+        # Ensure the process path is represented in the taxonomy so that
+        # processes can be referenced as `Scope` objects for scheduling and
+        # event matching. Create missing parent scopes; mark the final node
+        # with a `process` flag in its properties.
+        parts = [p for p in process_path.split("/") if p]
+        parent = None
+        for i, part in enumerate(parts):
+            full = "/".join(parts[: i + 1])
+            existing = self.get_scope(full)
+            if existing is None:
+                props = {}
+                if i == len(parts) - 1:
+                    props = {"process": True}
+                scope = Scope(name=part, parent=parent, properties=props)
+                # register_scope will handle adding child links and storing
+                # the scope; it raises if already present but we only call
+                # it for missing scopes.
+                self.register_scope(scope)
+                parent = scope
+            else:
+                parent = existing
 
     def get_process(self, process_path: str) -> Optional[Dict[str, Any]]:
         """Retrieve a process definition by its path.
@@ -309,6 +337,26 @@ class Domain:
                     continue
                 # Store the entire process definition
                 domain.register_process(process_path, entry)
+                # Also register the process path as taxonomy scopes so that
+                # processes can be referenced as `Scope` objects for
+                # scheduling and event matching. Create any missing parent
+                # scopes; mark the final node with a `process` flag in its
+                # properties for easy identification.
+                parts = [p for p in process_path.split("/") if p]
+                parent = None
+                for i, part in enumerate(parts):
+                    full = "/".join(parts[: i + 1])
+                    existing = domain.get_scope(full)
+                    if existing is None:
+                        props = {}
+                        # Mark final part as a process node
+                        if i == len(parts) - 1:
+                            props = {"process": True}
+                        scope = Scope(name=part, parent=parent, properties=props)
+                        domain.register_scope(scope)
+                        parent = scope
+                    else:
+                        parent = existing
 
 
         if domain is None:
