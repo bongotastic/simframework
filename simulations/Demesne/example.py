@@ -22,11 +22,6 @@ def main():
         vegetation_path="source/plant/species/cereal/wheat",
         acreage=5.0,
     )
-
-    # Retrieve the instance of a LandPlot process 
-    proc = sim.processes.get("process/crop/growth")
-    proc2 = sim.get_process_including(input="land/cultivated/crop/growing/early")
-    print(proc)
     
     sim.run()
 

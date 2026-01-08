@@ -2,355 +2,439 @@
 
 import pytest
 from simframework.process import (
-    ProcessType,
-    ProcessIO,
-    RequirementTool,
-    RequirementLabor,
-    RequirementAnimal,
-    RequirementInfrastructure,
-    ProcessDuration,
-    ProcessIO_Input,
+    ProcessItem,
+    Requirement,
+    Input,
+    Output,
+    Transform,
     Process,
 )
 
 
-class TestProcessIO:
+class TestProcessItem:
     def test_create_basic(self):
-        io = ProcessIO(item="item/goods/hammer")
-        assert io.item == "item/goods/hammer"
-        assert io.properties == {}
+        item = ProcessItem(name="Test", scope="item/goods/hammer")
+        assert item.name == "Test"
+        assert item.scope == "item/goods/hammer"
+        assert item.material is None
+        assert item.quantity == 1.0
+        assert item.properties == []
     
-    def test_property_access(self):
-        io = ProcessIO(item="item/goods/hammer")
-        io.set_property("mtbf", 500.0)
-        assert io.get_property("mtbf") == 500.0
-        assert io.get_property("nonexistent", "default") == "default"
-
-
-class TestRequirementTool:
-    def test_create_with_mtbf(self):
-        tool = RequirementTool(item="goods/tools/hammer")
-        tool.mtbf = 600.0
-        assert tool.mtbf == 600.0
-        assert tool.item == "goods/tools/hammer"
-    
-    def test_mtbf_property(self):
-        tool = RequirementTool(item="goods/tools/anvil", properties={"mtbf": 5000.0})
-        assert tool.mtbf == 5000.0
-
-
-class TestRequirementLabor:
-    def test_create_labor(self):
-        labor = RequirementLabor(item="social/role/baker")
-        labor.skill = "attributes/skill/provisioning"
-        labor.count = 2
-        assert labor.role == "social/role/baker"
-        assert labor.skill == "attributes/skill/provisioning"
-        assert labor.count == 2
-    
-    def test_labor_default_count(self):
-        labor = RequirementLabor(item="social/role/peasant")
-        assert labor.count == 1
-
-
-class TestRequirementAnimal:
-    def test_create_animal(self):
-        animal = RequirementAnimal(item="source/animal/domestic/ox")
-        animal.count = 2
-        assert animal.role == "source/animal/domestic/ox"
-        assert animal.count == 2
-    
-    def test_animal_with_properties(self):
-        animal = RequirementAnimal(
-            item="source/animal/domestic/ox",
-            properties={"working": True}
+    def test_to_dict(self):
+        item = ProcessItem(
+            name="Test",
+            scope="item/goods/hammer",
+            material="source/material/iron",
+            quantity=2.0,
+            properties=["property/heavy"]
         )
-        assert animal.get_property("working") is True
+        d = item.to_dict()
+        assert d["name"] == "Test"
+        assert d["scope"] == "item/goods/hammer"
+        assert d["material"] == "source/material/iron"
+        assert d["quantity"] == 2.0
+        assert d["properties"] == ["property/heavy"]
 
 
-class TestRequirementInfrastructure:
-    def test_create_infrastructure(self):
-        infra = RequirementInfrastructure(item="item/structure/bakehouse")
-        assert infra.item == "item/structure/bakehouse"
-
-
-class TestProcessDuration:
-    def test_base_duration(self):
-        dur = ProcessDuration(base_duration=8.0)
-        assert dur.get_duration() == 8.0
-        assert dur.get_duration("any_item") == 8.0
+class TestRequirement:
+    def test_create_with_mtbf(self):
+        req = Requirement(
+            name="Hammer",
+            scope="item/tool/hammer",
+            mtbf=600.0
+        )
+        assert req.name == "Hammer"
+        assert req.scope == "item/tool/hammer"
+        assert req.mtbf == 600.0
     
-    def test_duration_variants(self):
-        dur = ProcessDuration(
-            base_duration=16.0,
-            variants={
-                "source/plant/species/cereal/wheat": 16.0,
-                "source/plant/species/legume/pea": 12.0,
+    def test_to_dict_includes_mtbf(self):
+        req = Requirement(
+            name="Hammer",
+            scope="item/tool/hammer",
+            material="source/material/steel",
+            mtbf=600.0,
+            quantity=1,
+            properties=["property/heavy"]
+        )
+        d = req.to_dict()
+        assert d["mtbf"] == 600.0
+        assert d["material"] == "source/material/steel"
+
+
+class TestTransform:
+    def test_create_transform(self):
+        trans = Transform(
+            name="Workpiece",
+            scope="item/component/blade_blank",
+            material="source/material/iron",
+            properties=["property/annealed"],
+            add_properties=["property/shaped"],
+            remove_properties=["property/annealed"],
+            new_scope="item/component/blade"
+        )
+        assert trans.name == "Workpiece"
+        assert trans.add_properties == ["property/shaped"]
+        assert trans.remove_properties == ["property/annealed"]
+        assert trans.new_scope == "item/component/blade"
+    
+    def test_to_dict(self):
+        trans = Transform(
+            name="Workpiece",
+            scope="item/component/blade_blank",
+            add_properties=["property/shaped"],
+            remove_properties=["property/annealed"],
+            new_scope="item/component/blade",
+            new_material="source/material/steel"
+        )
+        d = trans.to_dict()
+        assert d["add_properties"] == ["property/shaped"]
+        assert d["remove_properties"] == ["property/annealed"]
+        assert d["new_scope"] == "item/component/blade"
+        assert d["new_material"] == "source/material/steel"
+
+
+class TestProcess:
+    def test_create_basic(self):
+        proc = Process(path="process/test", name="Test Process")
+        assert proc.path == "process/test"
+        assert proc.name == "Test Process"
+        assert proc.base_duration == 0.0
+        assert proc.requirements == []
+        assert proc.inputs == []
+        assert proc.transforms == []
+        assert proc.outputs == []
+    
+    def test_get_duration_base(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            base_duration=4.0
+        )
+        assert proc.get_duration() == 4.0
+        assert proc.get_duration("") == 4.0
+        assert proc.get_duration("unknown/material") == 4.0
+    
+    def test_get_duration_by_material(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            base_duration=4.0,
+            by_material={
+                "source/material/iron": 4.0,
+                "source/material/steel": 6.0,
+                "source/material/titanium": 12.0,
             }
         )
-        assert dur.get_duration("source/plant/species/cereal/wheat") == 16.0
-        assert dur.get_duration("source/plant/species/legume/pea") == 12.0
-        assert dur.get_duration("unknown") == 16.0
-
-
-class TestProcessIOInput:
-    def test_basic_io(self):
-        io = ProcessIO_Input(item="item/organic/plant/grain")
-        assert io.quantity == 1.0
-        assert io.quantity_variants == {}
+        assert proc.get_duration() == 4.0
+        assert proc.get_duration("source/material/iron") == 4.0
+        assert proc.get_duration("source/material/steel") == 6.0
+        assert proc.get_duration("source/material/titanium") == 12.0
+        assert proc.get_duration("source/material/unknown") == 4.0
     
-    def test_quantity_variants(self):
-        io = ProcessIO_Input(item="item/organic/plant/sheaf")
-        io.quantity = 100.0
-        io.quantity_variants = {
-            "source/plant/species/cereal/wheat": 700.0,
-            "source/plant/species/legume/pea": 1000.0,
-        }
-        assert io.get_quantity("source/plant/species/cereal/wheat") == 700.0
-        assert io.get_quantity("source/plant/species/legume/pea") == 1000.0
-        assert io.get_quantity("unknown") == 100.0
+    def test_get_requirements_all(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            requirements=[
+                Requirement(name="Hammer", scope="item/tool/hammer"),
+                Requirement(name="Forge", scope="item/infrastructure/forge"),
+            ]
+        )
+        scopes = proc.get_requirements()
+        assert scopes == ["item/tool/hammer", "item/infrastructure/forge"]
+    
+    def test_get_requirements_by_scope(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            requirements=[
+                Requirement(
+                    name="Hammer",
+                    scope="item/tool/hammer",
+                    material="source/material/steel",
+                    mtbf=600.0,
+                    quantity=1,
+                    properties=["property/heavy"]
+                ),
+            ]
+        )
+        req_dict = proc.get_requirements("item/tool/hammer")
+        assert req_dict is not None
+        assert req_dict["name"] == "Hammer"
+        assert req_dict["scope"] == "item/tool/hammer"
+        assert req_dict["material"] == "source/material/steel"
+        assert req_dict["mtbf"] == 600.0
+        assert req_dict["quantity"] == 1
+        assert req_dict["properties"] == ["property/heavy"]
+        
+        # Non-existent scope returns None
+        assert proc.get_requirements("item/tool/anvil") is None
+    
+    def test_has_requirement(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            requirements=[
+                Requirement(name="Hammer", scope="item/tool/hammer"),
+            ]
+        )
+        assert proc.has_requirement("item/tool/hammer") is True
+        assert proc.has_requirement("item/tool") is True
+        assert proc.has_requirement("item") is True
+        assert proc.has_requirement("item/tool/anvil") is False
+    
+    def test_get_inputs_all(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            inputs=[
+                Input(name="Fuel", scope="item/consumable/fuel"),
+                Input(name="Ore", scope="item/material/ore"),
+            ]
+        )
+        scopes = proc.get_inputs()
+        assert scopes == ["item/consumable/fuel", "item/material/ore"]
+    
+    def test_get_inputs_by_scope(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            inputs=[
+                Input(
+                    name="Fuel",
+                    scope="item/consumable/fuel",
+                    material="source/material/coal",
+                    quantity=5.0
+                ),
+            ]
+        )
+        inp_dict = proc.get_inputs("item/consumable/fuel")
+        assert inp_dict is not None
+        assert inp_dict["name"] == "Fuel"
+        assert inp_dict["quantity"] == 5.0
+        assert inp_dict["material"] == "source/material/coal"
+        
+        assert proc.get_inputs("item/consumable/wood") is None
+    
+    def test_has_input(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            inputs=[
+                Input(name="Fuel", scope="item/consumable/fuel"),
+            ]
+        )
+        assert proc.has_input("item/consumable/fuel") is True
+        assert proc.has_input("item/consumable") is True
+        assert proc.has_input("item/consumable/wood") is False
+    
+    def test_get_transforms_all(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            transforms=[
+                Transform(name="Workpiece", scope="item/component/blade_blank"),
+            ]
+        )
+        scopes = proc.get_transforms()
+        assert scopes == ["item/component/blade_blank"]
+    
+    def test_get_transforms_by_scope(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            transforms=[
+                Transform(
+                    name="Workpiece",
+                    scope="item/component/blade_blank",
+                    add_properties=["property/shaped"],
+                    remove_properties=["property/annealed"],
+                    new_scope="item/component/blade"
+                ),
+            ]
+        )
+        trans_dict = proc.get_transforms("item/component/blade_blank")
+        assert trans_dict is not None
+        assert trans_dict["add_properties"] == ["property/shaped"]
+        assert trans_dict["remove_properties"] == ["property/annealed"]
+        assert trans_dict["new_scope"] == "item/component/blade"
+    
+    def test_has_transform(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            transforms=[
+                Transform(name="Workpiece", scope="item/component/blade_blank"),
+            ]
+        )
+        assert proc.has_transform("item/component/blade_blank") is True
+        assert proc.has_transform("item/component") is True
+        assert proc.has_transform("item/component/other") is False
+    
+    def test_get_outputs_all(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            outputs=[
+                Output(name="Slag", scope="item/waste/slag"),
+            ]
+        )
+        scopes = proc.get_outputs()
+        assert scopes == ["item/waste/slag"]
+    
+    def test_get_outputs_by_scope(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            outputs=[
+                Output(
+                    name="Slag",
+                    scope="item/waste/slag",
+                    material="source/material/iron_oxide",
+                    quantity=0.5,
+                    properties=["property/hot"]
+                ),
+            ]
+        )
+        out_dict = proc.get_outputs("item/waste/slag")
+        assert out_dict is not None
+        assert out_dict["name"] == "Slag"
+        assert out_dict["quantity"] == 0.5
+        assert out_dict["material"] == "source/material/iron_oxide"
+        assert out_dict["properties"] == ["property/hot"]
+    
+    def test_has_output(self):
+        proc = Process(
+            path="process/test",
+            name="Test",
+            outputs=[
+                Output(name="Slag", scope="item/waste/slag"),
+            ]
+        )
+        assert proc.has_output("item/waste/slag") is True
+        assert proc.has_output("item/waste") is True
+        assert proc.has_output("item/waste/other") is False
 
 
 class TestProcessFromYAML:
-    def test_simple_natural_process(self):
+    def test_full_template_parse(self):
+        """Test parsing a complete YAML structure matching the template."""
         data = {
-            "path": "process/spoilage/flour",
-            "name": "Flour Spoilage",
-            "type": "natural",
-            "time": {"mtbf": 4000.0},
-            "inputs": {
-                "materials": [{"item": "item/organic/plant/flour"}]
-            },
-            "outputs": {
-                "products": [{"item": "item/organic/waste/rotting_matter"}]
-            },
-        }
-        proc = Process.from_yaml_dict(data)
-        assert proc.path == "process/spoilage/flour"
-        assert proc.name == "Flour Spoilage"
-        assert proc.process_type == ProcessType.NATURAL
-        assert proc.duration.base_duration == 4000.0
-        assert len(proc.inputs) == 1
-        assert proc.inputs[0].item == "item/organic/plant/flour"
-        assert len(proc.outputs) == 1
-    
-    def test_manual_process_with_requirements(self):
-        data = {
-            "path": "process/production/forging_horseshoes",
-            "name": "Forging Horseshoes",
-            "type": "manual",
-            "time": {"base_duration": 2.0},
-            "requirements": {
-                "infrastructure": "structure/smithy_forge",
-                "tools": [
-                    {"item": "goods/tools/crafts/smithing/hammer", "mtbf": 600.0},
-                    {"item": "goods/tools/crafts/smithing/anvil", "mtbf": 5000.0},
-                ],
-                "labor": [
-                    {"role": "social/role/blacksmith", "skill": "attributes/skill/smithing", "count": 1}
-                ],
-            },
-            "inputs": {
-                "materials": [
-                    {"item": "item/goods/stock/metal/wrought_iron", "quantity": 1.5}
-                ]
-            },
-            "outputs": {
-                "products": [
-                    {"item": "goods/tools/transport/tack/horseshoe", "quantity_base": 4}
-                ]
-            },
-        }
-        proc = Process.from_yaml_dict(data)
-        assert proc.process_type == ProcessType.MANUAL
-        assert len(proc.requirements) == 4  # 1 infrastructure + 2 tools + 1 labor
-        
-        # Find infrastructure requirement
-        infra_reqs = [r for r in proc.requirements if isinstance(r, RequirementInfrastructure)]
-        assert len(infra_reqs) == 1
-        assert infra_reqs[0].item == "structure/smithy_forge"
-        
-        # Find tool requirements
-        tool_reqs = [r for r in proc.requirements if isinstance(r, RequirementTool)]
-        assert len(tool_reqs) == 2
-        assert any(t.mtbf == 600.0 for t in tool_reqs)
-        
-        # Find labor requirements
-        labor_reqs = [r for r in proc.requirements if isinstance(r, RequirementLabor)]
-        assert len(labor_reqs) == 1
-        assert labor_reqs[0].role == "social/role/blacksmith"
-        assert labor_reqs[0].skill == "attributes/skill/smithing"
-        assert labor_reqs[0].count == 1
-    
-    def test_process_with_variants(self):
-        data = {
-            "path": "process/cultivation/harvesting",
-            "name": "Generic Harvesting",
-            "type": "manual",
+            "path": "process/manufacturing/example_forging",
+            "name": "Example Robust Process",
             "time": {
-                "base_duration": 16.0,
-                "by_plant": {
-                    "source/plant/species/cereal/wheat": 16.0,
-                    "source/plant/species/legume/pea": 12.0,
+                "base_duration": 4.0,
+                "by_material": {
+                    "source/material/iron": 4.0,
+                    "source/material/steel": 6.0,
+                    "source/material/titanium": 12.0,
+                }
+            },
+            "requirements": [
+                {
+                    "name": "Impact Tool",
+                    "scope": "item/tool/hammer",
+                    "material": "source/material/hardened_steel",
+                    "mtbf": 150.0,
+                    "quantity": 1,
+                    "properties": ["property/heavy", "property/durable"]
                 },
-            },
-            "outputs": {
-                "products": [
-                    {
-                        "item": "item/organic/plant/sheaf",
-                        "quantity_by_plant": {
-                            "source/plant/species/cereal/wheat": 700.0,
-                            "source/plant/species/legume/pea": 1000.0,
-                        },
-                    }
-                ]
-            },
+                {
+                    "name": "Heat Source",
+                    "scope": "item/infrastructure/forge",
+                    "properties": ["property/active", "property/hot"]
+                }
+            ],
+            "inputs": [
+                {
+                    "name": "Fuel",
+                    "scope": "item/consumable/fuel",
+                    "material": "source/material/coal",
+                    "quantity": 5.0
+                }
+            ],
+            "transforms": [
+                {
+                    "name": "Workpiece",
+                    "scope": "item/component/blade_blank",
+                    "material": "source/material/iron",
+                    "quantity": 1,
+                    "properties": ["property/annealed"],
+                    "add_properties": ["property/shaped", "property/compressed"],
+                    "remove_properties": ["property/annealed", "property/rough_cast"],
+                    "new_scope": "item/component/blade_blank3",
+                    "new_material": "item/component/blade_blank2"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "Slag Waste",
+                    "scope": "item/waste/slag",
+                    "material": "source/material/iron_oxide",
+                    "properties": ["property/hot", "property/brittle"],
+                    "quantity": 0.5
+                }
+            ]
         }
+        
         proc = Process.from_yaml_dict(data)
-        assert proc.get_duration("source/plant/species/cereal/wheat") == 16.0
-        assert proc.get_duration("source/plant/species/legume/pea") == 12.0
-        assert proc.outputs[0].get_quantity("source/plant/species/cereal/wheat") == 700.0
-        assert proc.outputs[0].get_quantity("source/plant/species/legume/pea") == 1000.0
-    
-    def test_process_with_animals(self):
-        data = {
-            "path": "process/cultivation/ploughing",
-            "name": "Ploughing",
-            "type": "manual",
-            "time": {"base_duration": 8.0},
-            "requirements": {
-                "animals": [
-                    {
-                        "role": "source/animal/domestic/ox",
-                        "properties": [{"working": True}],
-                        "count": 2,
-                    }
-                ]
-            },
-        }
-        proc = Process.from_yaml_dict(data)
-        animal_reqs = [r for r in proc.requirements if isinstance(r, RequirementAnimal)]
-        assert len(animal_reqs) == 1
-        assert animal_reqs[0].role == "source/animal/domestic/ox"
-        assert animal_reqs[0].count == 2
-        assert animal_reqs[0].get_property("working") is True
-    
-    def test_process_with_waste(self):
-        data = {
-            "path": "process/production/forging",
-            "name": "Forging",
-            "type": "manual",
-            "time": {"base_duration": 2.0},
-            "outputs": {
-                "products": [{"item": "goods/horseshoe", "quantity": 4}],
-                "waste": [{"item": "item/organic/waste/slag", "quantity": 0.2}],
-            },
-        }
-        proc = Process.from_yaml_dict(data)
+        
+        # Basic metadata
+        assert proc.path == "process/manufacturing/example_forging"
+        assert proc.name == "Example Robust Process"
+        
+        # Duration
+        assert proc.get_duration() == 4.0
+        assert proc.get_duration("source/material/steel") == 6.0
+        assert proc.get_duration("source/material/titanium") == 12.0
+        
+        # Requirements
+        assert len(proc.requirements) == 2
+        req_scopes = proc.get_requirements()
+        assert "item/tool/hammer" in req_scopes
+        assert "item/infrastructure/forge" in req_scopes
+        
+        hammer_req = proc.get_requirements("item/tool/hammer")
+        assert hammer_req["mtbf"] == 150.0
+        assert hammer_req["material"] == "source/material/hardened_steel"
+        
+        # Inputs
+        assert len(proc.inputs) == 1
+        fuel_input = proc.get_inputs("item/consumable/fuel")
+        assert fuel_input["quantity"] == 5.0
+        assert fuel_input["material"] == "source/material/coal"
+        
+        # Transforms
+        assert len(proc.transforms) == 1
+        trans = proc.get_transforms("item/component/blade_blank")
+        assert trans["add_properties"] == ["property/shaped", "property/compressed"]
+        assert trans["remove_properties"] == ["property/annealed", "property/rough_cast"]
+        assert trans["new_scope"] == "item/component/blade_blank3"
+        
+        # Outputs
         assert len(proc.outputs) == 1
-        assert len(proc.waste) == 1
-        assert proc.waste[0].item == "item/organic/waste/slag"
-        assert proc.waste[0].quantity == 0.2
-
-    def test_has_input(self):
-        # Simple input match
+        slag = proc.get_outputs("item/waste/slag")
+        assert slag["quantity"] == 0.5
+        assert slag["material"] == "source/material/iron_oxide"
+    
+    def test_minimal_process(self):
+        """Test parsing a minimal process with only required fields."""
         data = {
-            "path": "process/spoilage/flour",
-            "name": "Flour Spoilage",
-            "type": "natural",
-            "time": {"mtbf": 4000.0},
-            "inputs": {
-                "materials": [{"item": "item/organic/plant/flour"}]
-            },
-            "outputs": {
-                "products": [{"item": "item/organic/waste/rotting_matter"}]
-            },
+            "path": "process/simple",
+            "name": "Simple Process",
+            "time": {
+                "base_duration": 1.0
+            }
         }
+        
         proc = Process.from_yaml_dict(data)
-        assert proc.has_input("item/organic/plant/flour") is True
-        assert proc.has_input("item/organic/plant/grain") is False
-
-    def test_has_input_variants(self):
-        # Quantity variants should be treated as inputs for matching
-        data = {
-            "path": "process/processing/threshing",
-            "name": "Threshing",
-            "type": "manual",
-            "time": {"base_duration": 8.0},
-            "inputs": {
-                "materials": [
-                    {"item": "item/organic/plant/sheaf", "quantity_by_plant": {"source/plant/species/cereal/wheat": 900.0}}
-                ]
-            },
-            "outputs": {
-                "products": [{"item": "item/organic/plant/grain"}]
-            },
-        }
-        proc = Process.from_yaml_dict(data)
-        assert proc.has_input("item/organic/plant/sheaf") is True
-        assert proc.has_input("source/plant/species/cereal/wheat") is True
-        assert proc.has_input("source/plant/species/legume/pea") is False
-        # Prefix queries should match
-        assert proc.has_input("source/plant/species/cereal") is True
-        assert proc.has_input("source/plant/species") is True
-        assert proc.has_input("source/plant") is True
-        assert proc.has_input("source") is True
-
-    def test_has_output(self):
-        data = {
-            "path": "process/processing/threshing",
-            "name": "Threshing",
-            "type": "manual",
-            "time": {"base_duration": 8.0},
-            "inputs": {
-                "materials": [
-                    {"item": "item/organic/plant/sheaf", "quantity_by_plant": {"source/plant/species/cereal/wheat": 900.0}}
-                ]
-            },
-            "outputs": {
-                "products": [
-                    {"item": "item/organic/plant/grain", "quantity_by_plant": {"source/plant/species/cereal/wheat": 300.0}}
-                ]
-            },
-        }
-        proc = Process.from_yaml_dict(data)
-        assert proc.has_output("item/organic/plant/grain") is True
-        assert proc.has_output("source/plant/species/cereal/wheat") is True
-        assert proc.has_output("item/organic/plant/chaff") is False
-        # Prefix queries should match
-        assert proc.has_output("source/plant/species/cereal") is True
-        assert proc.has_output("item/organic/plant") is True
-
-    def test_has_requirement(self):
-        data = {
-            "path": "process/production/forging_horseshoes",
-            "name": "Forging Horseshoes",
-            "type": "manual",
-            "time": {"base_duration": 2.0},
-            "requirements": {
-                "infrastructure": "structure/smithy_forge",
-                "tools": [
-                    {"item": "goods/tools/crafts/smithing/hammer", "mtbf": 600.0},
-                ],
-                "labor": [
-                    {"role": "social/role/blacksmith", "skill": "attributes/skill/smithing", "count": 1}
-                ],
-                "animals": [
-                    {"role": "source/animal/domestic/ox", "count": 2}
-                ],
-            },
-        }
-        proc = Process.from_yaml_dict(data)
-        assert proc.has_requirement("structure/smithy_forge") is True
-        assert proc.has_requirement("goods/tools/crafts/smithing/hammer") is True
-        assert proc.has_requirement("social/role/blacksmith") is True
-        assert proc.has_requirement("source/animal/domestic/ox") is True
-        assert proc.has_requirement("nonexistent") is False
-        # Prefix queries
-        assert proc.has_requirement("goods/tools") is True
-        assert proc.has_requirement("social/role") is True
-        assert proc.has_requirement("source/animal") is True
-        assert proc.has_requirement("source") is True
+        assert proc.path == "process/simple"
+        assert proc.name == "Simple Process"
+        assert proc.get_duration() == 1.0
+        assert proc.get_requirements() == []
+        assert proc.get_inputs() == []
+        assert proc.get_transforms() == []
+        assert proc.get_outputs() == []
 
 
 class TestProcessRepr:
@@ -358,12 +442,10 @@ class TestProcessRepr:
         proc = Process(
             path="process/test",
             name="Test",
-            process_type=ProcessType.MANUAL,
-            duration=ProcessDuration(base_duration=5.0),
+            base_duration=5.0,
         )
         repr_str = repr(proc)
         assert "process/test" in repr_str
-        assert "manual" in repr_str
         assert "5.0h" in repr_str
 
 

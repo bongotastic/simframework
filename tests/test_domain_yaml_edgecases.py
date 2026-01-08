@@ -58,7 +58,11 @@ def test_from_yaml_empty_scopes_returns_domain(tmp_path):
     f.write_text("name: EmptyDomain\n")
     domain = Domain.from_yaml(str(f))
     assert domain.name == "EmptyDomain"
-    assert domain.list_all_scopes() == []
+    # Engine-level scopes (e.g., heartbeat) are registered by Domain.__init__
+    # so an otherwise-empty domain will still contain the heartbeat scope.
+    scopes = domain.list_all_scopes()
+    assert len(scopes) == 1
+    assert domain.get_scope("heartbeat") is not None
 
 
 def test_from_yaml_glob_pattern_loading(tmp_path):

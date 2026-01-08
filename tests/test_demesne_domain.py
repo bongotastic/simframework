@@ -20,3 +20,19 @@ def test_demesne_domain_exists():
     # Check for expected top-level scopes (post-refactor)
     assert d.get_scope("land") is not None
     assert d.get_scope("source/animal") is not None
+
+
+def test_process_paths_registered_as_scopes():
+    """Processes defined in domain_processes.yaml should be registered as scopes.
+
+    This ensures processes can be used as scheduling scopes (e.g.,
+    `process/processing/milling_wheat`). The final scope node for a
+    process should be marked with `process: True` in its properties.
+    """
+    pdir = Path(__file__).resolve().parents[1] / "simulations" / "Demesne"
+    d = Domain.from_yaml(str(pdir))
+
+    proc_path = "process/processing/milling_wheat"
+    scope = d.get_scope(proc_path)
+    assert scope is not None, f"process scope not registered: {proc_path}"
+    assert scope.properties.get("process") is True

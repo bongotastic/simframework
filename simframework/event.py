@@ -21,14 +21,14 @@ class Event:
     data: Dict[str, Any] = field(default_factory=dict)
     timespan: datetime.timedelta = field(default_factory=lambda: datetime.timedelta(0))
     scope: Optional["Scope"] = None
-    system: Optional["Entity"] = None
+    entity_anchor: Optional["Entity"] = None
 
     def __repr__(self) -> str:  # pragma: no cover - trivial
         parts = [f"data={self.data!r}", f"timespan={self.timespan}"]
         if self.scope is not None:
             parts.append(f"scope={self.scope!r}")
-        if self.system is not None:
-            parts.append(f"system={self.system!r}")
+        if self.entity_anchor is not None:
+            parts.append(f"system={self.entity_anchor!r}")
         return f"Event({', '.join(parts)})"
 
     def set_property(self, key: str, value: Any) -> None:

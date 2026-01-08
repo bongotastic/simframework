@@ -1,0 +1,129 @@
+# Robust Process Configuration Template
+# ==============================================================================
+# This template defines a versatile process structure supporting:
+# 1. Consumption (Inputs)
+# 2. Modification (Transforms)
+# 3. Prerequisites (Requirements)
+# 4. Production (Outputs)
+#
+# It adheres to the entity definition: 
+# Entity = Scope (What) + Material (Composition) + Properties (Qualities)
+
+# ------------------------------------------------------------------------------
+# PROCESS METADATA
+# ------------------------------------------------------------------------------
+path: process/manufacturing/example_forging
+name: "Example Robust Process"
+description: "A template process demonstrating consumption, transformation, requirements, and output."
+type: manual # Options: manual, natural, automated
+
+# ------------------------------------------------------------------------------
+# TIME DEFINITION
+# ------------------------------------------------------------------------------
+# Completion time configuration. 
+# Supports base duration and overrides based on the material of the primary target.
+time:
+  base_duration: 4.0 # Standard duration in hours
+  
+  # "completion time may be material depend"
+  # Keys should match the 'material' scope of the primary input or transform target.
+  by_material:
+    source/material/iron: 4.0
+    source/material/steel: 6.0
+    source/material/titanium: 12.0
+
+# ------------------------------------------------------------------------------
+# 1. REQUIREMENTS (0+ items)
+# ------------------------------------------------------------------------------
+# Items required to proceed but NOT consumed.
+# Acts as a FILTER.
+requirements:
+  # TYPE A: TOOL / INFRASTRUCTURE
+  # Often includes 'mtbf' (Median Time Between Failures)
+  - name: "Impact Tool"
+    scope: item/tool/hammer
+    material: source/material/hardened_steel # Optional filter
+    # "a properties that goes alongside count or quantity for tools is mtbf"
+    mtbf: 150.0 # Expected hours of operation before failure
+    count: 1
+    properties:
+      - property/heavy
+      - property/durable
+
+  - name: "Heat Source"
+    scope: item/infrastructure/forge
+    properties:
+      - property/active
+      - property/hot
+
+  # TYPE B: LABOUR
+  # "defined by an attribute/... and a count, plus optional properties"
+  - name: "Smith"
+    scope: attribute/profession/blacksmith
+    count: 1
+    properties:
+      - property/skilled
+      - property/available
+
+  # TYPE C: ANIMAL
+  # "defined by a source/.../species/..., a count, and 0+ properties"
+  - name: "Draft Animal"
+    scope: source/living/species/ox
+    count: 2
+    properties:
+      - property/trained
+      - property/strong
+
+# ------------------------------------------------------------------------------
+# 2. INPUTS (0+ items)
+# ------------------------------------------------------------------------------
+# Items that are consumed and deleted upon completion.
+# Acts as a FILTER for selection.
+inputs:
+  - name: "Fuel"
+    scope: item/consumable/fuel
+    material: source/material/coal # Material filter
+    quantity: 5.0 # Amount consumed
+
+# ------------------------------------------------------------------------------
+# 3. TRANSFORMS (0+ items)
+# ------------------------------------------------------------------------------
+# Items that retain their identity but have properties added or removed.
+# "0+ items that are transformed by adding or removing properties."
+transforms:
+  - name: "Workpiece"
+    # 1. SELECTION (Filter)
+    scope: item/component/blade_blank
+    material: source/material/iron
+    # Optional: Filter by current properties (e.g., must be 'annealed' to be forged)
+    properties: 
+      - property/annealed
+
+    # 2. MODIFICATION (Action)
+    add_properties:
+      - property/shaped
+      - property/compressed
+    
+    remove_properties:
+      - property/annealed
+      - property/rough_cast
+
+# ------------------------------------------------------------------------------
+# 4. OUTPUTS (0+ items)
+# ------------------------------------------------------------------------------
+# New items created by the process.
+# Acts as a DEFINITION for creation.
+outputs:
+  - name: "Slag Waste"
+    # "Output always include the scope describing what it is"
+    scope: item/waste/slag
+    
+    # Defines the material of the created item
+    material: source/material/iron_oxide
+    
+    # Defines the properties of the created item
+    properties:
+      - property/hot
+      - property/brittle
+    
+    quantity: 0.5

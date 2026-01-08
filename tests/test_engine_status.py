@@ -14,9 +14,10 @@ def test_print_status_shows_counts_and_times(capsys):
     e1 = Event(data={"event_id": 1})
     e2 = Event(data={"event_id": 2})
     e3 = Event(data={"event_id": 3})
-    engine.scheduler.schedule(1.0, event=e1)
-    engine.scheduler.schedule(3.0, event=e2)
-    engine.scheduler.schedule(2.0, event=e3)
+    from datetime import timedelta
+    engine.scheduler.schedule(timedelta(seconds=1.0), event=e1)
+    engine.scheduler.schedule(timedelta(seconds=3.0), event=e2)
+    engine.scheduler.schedule(timedelta(seconds=2.0), event=e3)
 
     engine.print_status()
     out = capsys.readouterr().out

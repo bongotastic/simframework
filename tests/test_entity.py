@@ -4,68 +4,22 @@ from simframework.entity import Entity
 
 def test_entity_creation():
     """Test creating an entity with valid parameters."""
-    entity = Entity(identifier="environment/temperature/sensor", reliability=8, volume_liters=2.5, mass_kg=1.2, ablative=0.1)
+    entity = Entity(identifier="environment/temperature/sensor", volume_liters=2.5, mass_kg=1.2)
     assert entity.identifier == "environment/temperature/sensor"
-    assert entity.reliability == 8
     assert entity.volume_liters == pytest.approx(2.5)
     assert entity.mass_kg == pytest.approx(1.2)
-    assert entity.ablative == pytest.approx(0.1)
 
 
 def test_entity_defaults():
     """Test entity creation with default values."""
     entity = Entity(identifier="tool/hammer")
     assert entity.identifier == "tool/hammer"
-    assert entity.reliability == 10  # Default: fully reliable
     assert entity.volume_liters == pytest.approx(0.0)  # Default volume
     assert entity.mass_kg == pytest.approx(0.0)  # Default mass
-    assert entity.ablative == pytest.approx(0.0)  # Default: no degradation
+    # No reliability/ablative fields; defaults checked above
 
 
-def test_entity_defaults():
-    """Test entity creation with default values."""
-    entity = Entity(identifier="tool/hammer")
-    assert entity.identifier == "tool/hammer"
-    assert entity.reliability == 10  # Default: fully reliable
-    assert entity.volume_liters == pytest.approx(0.0)  # Default volume
-    assert entity.mass_kg == pytest.approx(0.0)  # Default mass
-    assert entity.ablative == pytest.approx(0.0)  # Default: no degradation
-
-
-def test_entity_reliability_validation():
-    """Test that reliability is validated to be an integer within [0, 10]."""
-    # Valid bounds (integers)
-    Entity(identifier="test", reliability=0)
-    Entity(identifier="test", reliability=10)
-    Entity(identifier="test", reliability=5)
-
-    # Invalid: non-int (float)
-    with pytest.raises(ValueError, match="reliability must be an int between 0 and 10"):
-        Entity(identifier="test", reliability=5.5)
-
-    # Invalid: too high
-    with pytest.raises(ValueError, match="reliability must be an int between 0 and 10"):
-        Entity(identifier="test", reliability=11)
-
-    # Invalid: too low
-    with pytest.raises(ValueError, match="reliability must be an int between 0 and 10"):
-        Entity(identifier="test", reliability=-1)
-
-
-def test_entity_ablative_validation():
-    """Test that ablative is validated to be within [0, 1]."""
-    # Valid bounds
-    Entity(identifier="test", ablative=0.0)
-    Entity(identifier="test", ablative=1.0)
-    Entity(identifier="test", ablative=0.5)
-
-    # Invalid: too high
-    with pytest.raises(ValueError, match="ablative must be between 0 and 1"):
-        Entity(identifier="test", ablative=1.1)
-
-    # Invalid: too low
-    with pytest.raises(ValueError, match="ablative must be between 0 and 1"):
-        Entity(identifier="test", ablative=-0.01)
+# reliability/ablative removed: no tests for them
 
 
 def test_volume_and_mass_validation():
@@ -152,27 +106,16 @@ def test_container_add_with_quantity():
 
 def test_ablate():
     """Test ablating an entity's ablative value (ablate method)."""
-    entity = Entity(identifier="tool", ablative=0.2)
-
-    # Ablate by 0.3
-    entity.ablate(0.3)
-    assert entity.ablative == pytest.approx(0.5)
-
-    # Ablate past the limit (should clamp to 1.0)
-    entity.ablate(0.6)
-    assert entity.ablative == pytest.approx(1.0)
+    # ablate() was removed; ensure calling it raises AttributeError
+    entity = Entity(identifier="tool")
+    with pytest.raises(AttributeError):
+        entity.ablate(0.3)
 
 
 def test_reliability_test(monkeypatch):
     """Test deterministic reliability_test behavior via monkeypatching random.randint."""
-    import random
-    e = Entity(identifier="test", reliability=5)
-
-    # Force a low roll -> pass
-    monkeypatch.setattr(random, "randint", lambda a, b: 3)
-    assert e.reliability_test() is True
-
-    # Force a high roll -> fail
-    monkeypatch.setattr(random, "randint", lambda a, b: 6)
-    assert e.reliability_test() is False
+    # reliability_test() was removed; calling it should raise AttributeError
+    e = Entity(identifier="test")
+    with pytest.raises(AttributeError):
+        e.reliability_test()
 

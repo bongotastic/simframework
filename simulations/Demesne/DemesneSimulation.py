@@ -52,47 +52,98 @@ class DemesneSimulation(SimulationEngine):
             LandPlot instance.
         """
         # Use the engine's domain to resolve stage/vegetation scopes when available
-        dom = getattr(self, "domain", None)
+        dom = self.domain
 
-        stage = None
-        veg = None
-        if dom is not None:
-            if stage_path:
-                try:
-                    stage = dom.get_scope(stage_path)
-                except Exception:
-                    stage = None
-            if vegetation_path:
-                try:
-                    veg = dom.get_scope(vegetation_path)
-                except Exception:
-                    veg = None
+        # resolve scopes for stage and vegetation
+        stage = self.domain.get_scope(stage_path) if (dom is not None and stage_path) else None
+        veg = self.domain.get_scope(vegetation_path) if (dom is not None and vegetation_path) else None
 
         # Generate an identifier if none provided
         if identifier is None:
             identifier = f"landplot_{self._entity_counter}"
             self._entity_counter += 1
 
+        # instantiate LandPlot and register to the simulation
         lp = LandPlot(identifier=identifier, stage=stage, vegetation=veg, acreage=acreage)
         self.add_entity(lp)
 
-        # Add an event to register the landplot progress
-        next_stage = self.get_process_including(input=stage)
+        # Add an event to register the landplot progress: find the
+        # natural process associated with the `stage` scope and schedule it.
+        process_to_next_stage = self.get_natural_process_for_scope(stage)
 
-        # Identify a natural process to advance the landplot's stage
-        for element in next_stage:
-            if element.is_natural():
-                next_stage = element
-                break
-
-        if next_stage is not None:
-            self.scheduler.schedule(
-                delay= next_stage.get_duration(veg), # tries to get correct duration, assume inception is now. 
+        if process_to_next_stage is not None:
+            # Determine a suitable item to pass to Process.get_duration().
+            # Is is theoretically possible that there is no natural process for a landplot 
+            delay = process_to_next_stage.get_duration(veg)
+            self.schedule(
                 entity=lp,
-                message=f"Process {next_stage.name} for LandPlot {lp.name}",
+                delay=delay,
+                scope= self.domain.get_scope(process_to_next_stage.path),
+                event_data={"message": f"Process {process_to_next_stage.name} for LandPlot {lp.name}"}
             )
 
         return lp
+
+    def get_natural_process_for_scope(self, scope) -> Optional[object]:
+        """Return the natural `Process` associated with `scope`, or None.
+
+        Args:
+            scope: Scope object or scope path string. When a string is
+                provided and this engine has a `domain`, an attempt is made
+                to resolve it to a `Scope` object via `self.domain.get_scope()`.
+
+        Matching strategy:
+            1. Use `self.get_process_including(input=scope)` to find candidate
+               processes that list the scope as an input (prefix-matching).
+            2. Filter candidates for those where `proc.is_natural()` is True.
+            3. Prefer a process with an exact input match (via
+               `proc.has_as_input()`); otherwise return the first natural
+               candidate. Returns `None` if no natural process is found.
+        """
+        # Resolve scope string to domain Scope when possible
+        resolved = scope
+        if isinstance(scope, str) and getattr(self, "domain", None) is not None:
+            try:
+                resolved = self.domain.get_scope(scope)
+            except Exception:
+                # Leave as string if resolution fails
+                resolved = scope
+
+        try:
+            candidates = self.get_process_including(input=resolved)
+        except Exception:
+            return None
+
+        if not candidates:
+            return None
+
+        natural = [p for p in candidates if getattr(p, "is_natural", lambda: False)()]
+        if not natural:
+            return None
+
+        # Prefer exact input match (has_as_input returns props dict on match)
+        norm = None
+        if hasattr(resolved, "full_path"):
+            try:
+                norm = resolved.full_path()
+            except Exception:
+                norm = None
+        if norm is None:
+            try:
+                norm = str(scope)
+            except Exception:
+                norm = None
+
+        if norm is not None:
+            for p in natural:
+                try:
+                    if p.has_as_input(norm) is not None:
+                        return p
+                except Exception:
+                    continue
+
+        # Fallback: return first natural candidate
+        return natural[0]
 
     def run(self):
         """Run the simulation (stub)."""
@@ -102,30 +153,36 @@ class DemesneSimulation(SimulationEngine):
 
         while True:
             # Fetch next event
-            event = self.scheduler.step()
+            event = self.step()
             if event is None:
                 break
 
             # get scope of event
-            this_scope = event.scope.full_path if event.scope else "N/A"
+            this_scope = event.scope.full_path() if event.scope else "N/A"
 
             # Prevent infinite loop on heartbeat events
             if this_scope == "heartbeat" and len(self.scheduler._queue) == 1 and last_was_heartbeat:
                 break
 
-            # Write to log
-            self.log(f"Processing event with scope: {this_scope} at simulation time {self.scheduler.now}")  
-
             # Dispatch 
-            match this_scope:
-                case "heartbeat":
-                    self.handle_heartbeat(event)
-                    last_was_heartbeat = True
-                case _:
-                    # For other events, just print for nowl
-                    last_was_heartbeat = False
+            if this_scope == "heartbeat":
+                self.handle_heartbeat(event)
+                last_was_heartbeat = True
+            elif this_scope.startswith("process/crop"):
+                self.handle_crop_evolution(event)
+                last_was_heartbeat = False
+            else:
+                # For other events, just print for now
+                self.log(f"Processing event for unknown scope '{this_scope}' with data: {event.data}") 
+                last_was_heartbeat = False
+ 
 
     def handle_heartbeat(self, event):
         """Handle heartbeat events (stub)."""
         # For demonstration, just print heartbeat occurrence
-        self.log(f"Heartbeat event at simulation time {self.scheduler.now}")
+        self.log(f"Heartbeat")
+
+    def handle_crop_evolution(self, event):
+        """Handle crop evolution events (stub)."""
+        # For demonstration, just print crop evolution occurrence
+        self.log(f"Crop evolution event for {event.entity_anchor.name} with process: {event.scope.full_path()}")

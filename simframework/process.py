@@ -1,605 +1,407 @@
 """Process definitions and data structures for simulation workflows.
 
 Processes define how inputs transform into outputs via requirements (tools, labor, infrastructure).
-Supports both manual and natural processes with time variants keyed by taxonomy item.
+Supports time variants keyed by material taxonomy paths.
+
+YAML Template Structure (domain_processes.template.yaml):
+    path: process/manufacturing/example
+    name: "Example Process"
+    time:
+        base_duration: 4.0
+        by_material:
+            source/material/iron: 4.0
+            source/material/steel: 6.0
+    requirements:
+        - name: "Tool Name"
+          scope: item/tool/hammer
+          material: source/material/steel  # optional
+          mtbf: 150.0                       # optional
+          quantity: 1                       # optional
+          properties:                       # optional
+            - property/heavy
+    inputs:
+        - name: "Fuel"
+          scope: item/consumable/fuel
+          material: source/material/coal    # optional
+          quantity: 5.0                     # optional
+    transforms:
+        - name: "Workpiece"
+          scope: item/component/blade_blank
+          material: source/material/iron    # optional
+          quantity: 1                       # optional
+          properties:                       # optional
+            - property/annealed
+          add_properties:                   # optional
+            - property/shaped
+          remove_properties:                # optional
+            - property/annealed
+          new_scope: item/component/blade   # optional
+          new_material: source/material/x   # optional
+    outputs:
+        - name: "Slag Waste"
+          scope: item/waste/slag
+          material: source/material/iron_oxide  # optional
+          quantity: 0.5                         # optional
+          properties:                           # optional
+            - property/hot
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional, Union
-
-
-class ProcessType(Enum):
-    """Process execution model."""
-    MANUAL = "manual"
-    NATURAL = "natural"
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
-class ProcessIO:
-    """Flexible taxonomy-based IO item with optional properties.
+class ProcessItem:
+    """Base class for requirements, inputs, outputs, and transforms.
     
-    Base wrapper for any process input/output/requirement that references
-    a taxonomy item. Properties dict enables extensibility without class changes.
+    All process items share a common structure:
+    - name: Human-readable identifier
+    - scope: Taxonomic path defining what type of item
+    - material: Optional taxonomic path for material composition
+    - quantity: Optional count/amount
+    - properties: Optional list of taxonomic property paths
     """
-    item: str  # Taxonomy path (e.g., "item/organic/plant/grain")
-    properties: Dict[str, Any] = field(default_factory=dict)
+    name: str
+    scope: str
+    material: Optional[str] = None
+    quantity: float = 1.0
+    properties: List[str] = field(default_factory=list)
     
-    def get_property(self, key: str, default: Any = None) -> Any:
-        """Retrieve a property by key with fallback."""
-        return self.properties.get(key, default)
-    
-    def set_property(self, key: str, value: Any) -> None:
-        """Set or update a property."""
-        self.properties[key] = value
+    def to_dict(self) -> Dict[str, Any]:
+        """Return a dictionary of all attributes."""
+        result = {
+            "name": self.name,
+            "scope": self.scope,
+            "quantity": self.quantity,
+        }
+        if self.material:
+            result["material"] = self.material
+        if self.properties:
+            result["properties"] = self.properties.copy()
+        return result
 
 
 @dataclass
-class RequirementTool(ProcessIO):
-    """Tool requirement: item + mean-time-between-failures (mtbf).
+class Requirement(ProcessItem):
+    """A requirement item (tool, infrastructure, etc.) not consumed.
     
-    mtbf: Mean time until failure (hours). Tracks tool wear/degradation risk.
+    Additional attributes:
+    - mtbf: Mean Time Between Failures (optional, for tools)
     """
-    def __post_init__(self):
-        # Ensure mtbf is set; default from properties or None
-        if 'mtbf' not in self.properties:
-            self.properties['mtbf'] = None
+    mtbf: Optional[float] = None
     
-    @property
-    def mtbf(self) -> Optional[float]:
-        return self.get_property('mtbf')
-    
-    @mtbf.setter
-    def mtbf(self, value: Optional[float]) -> None:
-        self.set_property('mtbf', value)
+    def to_dict(self) -> Dict[str, Any]:
+        result = super().to_dict()
+        if self.mtbf is not None:
+            result["mtbf"] = self.mtbf
+        return result
 
 
 @dataclass
-class RequirementLabor(ProcessIO):
-    """Labor requirement: role + skill + worker count.
-    
-    role: Taxonomy path to a social role (e.g., "social/role/baker")
-    skill: Taxonomy path to a fallback skill if no role-specific one exists
-    count: Ideal number of workers for this role
-    """
-    def __post_init__(self):
-        if 'skill' not in self.properties:
-            self.properties['skill'] = None
-        if 'count' not in self.properties:
-            self.properties['count'] = 1
-    
-    @property
-    def role(self) -> str:
-        return self.item
-    
-    @role.setter
-    def role(self, value: str) -> None:
-        self.item = value
-    
-    @property
-    def skill(self) -> Optional[str]:
-        return self.get_property('skill')
-    
-    @skill.setter
-    def skill(self, value: Optional[str]) -> None:
-        self.set_property('skill', value)
-    
-    @property
-    def count(self) -> int:
-        return self.get_property('count', 1)
-    
-    @count.setter
-    def count(self, value: int) -> None:
-        self.set_property('count', value)
-
-
-@dataclass
-class RequirementAnimal(ProcessIO):
-    """Animal requirement: role (animal taxonomy) + properties + count.
-    
-    role: Taxonomy path to animal type/variant
-    properties: Dict of arbitrary properties (e.g., {"state": "working"})
-    count: Number of animals needed
-    """
-    def __post_init__(self):
-        if 'count' not in self.properties:
-            self.properties['count'] = 1
-    
-    @property
-    def role(self) -> str:
-        return self.item
-    
-    @role.setter
-    def role(self, value: str) -> None:
-        self.item = value
-    
-    @property
-    def count(self) -> int:
-        return self.get_property('count', 1)
-    
-    @count.setter
-    def count(self, value: int) -> None:
-        self.set_property('count', value)
-
-
-@dataclass
-class RequirementInfrastructure(ProcessIO):
-    """Infrastructure requirement: single item (building/structure).
-    
-    item: Taxonomy path to structure (e.g., "item/structure/bakehouse")
-    """
+class Input(ProcessItem):
+    """An input item that is consumed by the process."""
     pass
 
 
-# Polymorphic union type for requirements
-ProcessRequirement = Union[RequirementTool, RequirementLabor, RequirementAnimal, RequirementInfrastructure]
+@dataclass 
+class Output(ProcessItem):
+    """An output item produced by the process."""
+    pass
 
 
 @dataclass
-class ProcessDuration:
-    """Time specification: base duration + optional item-specific variants.
+class Transform(ProcessItem):
+    """A transform item that is modified but retains identity.
     
-    base_duration: Default duration in hours
-    variants: Dict mapping taxonomy item path -> specific duration (hours)
+    Additional attributes:
+    - add_properties: List of property paths to add
+    - remove_properties: List of property paths to remove
+    - new_scope: Optional new scope after transformation
+    - new_material: Optional new material after transformation
     """
-    base_duration: float
-    variants: Dict[str, float] = field(default_factory=dict)
+    add_properties: List[str] = field(default_factory=list)
+    remove_properties: List[str] = field(default_factory=list)
+    new_scope: Optional[str] = None
+    new_material: Optional[str] = None
     
-    def get_duration(self, item: Optional[str] = None) -> float:
-        """Get duration for a specific item, or base if not found."""
-        if item and item in self.variants:
-            return self.variants[item]
-        return self.base_duration
-
-
-@dataclass
-class ProcessIO_Input(ProcessIO):
-    """Input/output item with optional quantity and variants.
-    
-    item: Taxonomy path
-    quantity: Base quantity (mass, count, etc.). Defaults to 1.0
-    quantity_variants: Dict mapping taxonomy item -> specific quantity
-    properties: Extensible property dict
-    """
-    def __post_init__(self):
-        if 'quantity' not in self.properties:
-            self.properties['quantity'] = 1.0
-        if 'quantity_variants' not in self.properties:
-            self.properties['quantity_variants'] = {}
-    
-    @property
-    def quantity(self) -> float:
-        return self.get_property('quantity', 1.0)
-    
-    @quantity.setter
-    def quantity(self, value: float) -> None:
-        self.set_property('quantity', value)
-    
-    @property
-    def quantity_variants(self) -> Dict[str, float]:
-        return self.get_property('quantity_variants', {})
-    
-    @quantity_variants.setter
-    def quantity_variants(self, value: Dict[str, float]) -> None:
-        self.set_property('quantity_variants', value)
-    
-    def get_quantity(self, item: Optional[str] = None) -> float:
-        """Get quantity for a specific item, or base if not found."""
-        if item and item in self.quantity_variants:
-            return self.quantity_variants[item]
-        return self.quantity
+    def to_dict(self) -> Dict[str, Any]:
+        result = super().to_dict()
+        if self.add_properties:
+            result["add_properties"] = self.add_properties.copy()
+        if self.remove_properties:
+            result["remove_properties"] = self.remove_properties.copy()
+        if self.new_scope:
+            result["new_scope"] = self.new_scope
+        if self.new_material:
+            result["new_material"] = self.new_material
+        return result
 
 
 @dataclass
 class Process:
-    """Complete process definition: transformations, requirements, time.
+    """Complete process definition following the YAML template structure.
     
     Attributes:
         path: Unique taxonomy-like identifier (e.g., "process/production/forging")
         name: Human-readable name
-        process_type: MANUAL or NATURAL
-        duration: ProcessDuration with base and variants
-        requirements: List of ProcessRequirement (tools, labor, animals, infrastructure)
-        inputs: List of ProcessIO_Input items consumed/transformed
-        outputs: List of ProcessIO_Input items produced
-        waste: List of ProcessIO_Input byproducts
+        base_duration: Default duration in hours
+        by_material: Dict mapping material paths to specific durations
+        requirements: List of Requirement items (tools, infrastructure)
+        inputs: List of Input items (consumed)
+        transforms: List of Transform items (modified in place)
+        outputs: List of Output items (produced)
     """
     path: str
     name: str
-    process_type: ProcessType
-    duration: ProcessDuration
-    requirements: List[ProcessRequirement] = field(default_factory=list)
-    inputs: List[ProcessIO_Input] = field(default_factory=list)
-    outputs: List[ProcessIO_Input] = field(default_factory=list)
-    waste: List[ProcessIO_Input] = field(default_factory=list)
+    base_duration: float = 0.0
+    by_material: Dict[str, float] = field(default_factory=dict)
+    requirements: List[Requirement] = field(default_factory=list)
+    inputs: List[Input] = field(default_factory=list)
+    transforms: List[Transform] = field(default_factory=list)
+    outputs: List[Output] = field(default_factory=list)
+    
+    # -------------------------------------------------------------------------
+    # Duration API
+    # -------------------------------------------------------------------------
+    
+    def get_duration(self, material: str = "") -> float:
+        """Get process duration, optionally adjusted for a specific material.
+        
+        Args:
+            material: Optional material taxonomy path to lookup specific duration.
+        
+        Returns:
+            Duration in hours. If material is provided and found in by_material,
+            returns that specific duration; otherwise returns base_duration.
+        """
+        if material and material in self.by_material:
+            return self.by_material[material]
+        return self.base_duration
+    
+    # -------------------------------------------------------------------------
+    # Requirements API
+    # -------------------------------------------------------------------------
+    
+    def get_requirements(self, scope: Optional[str] = None) -> Any:
+        """Get requirements, optionally filtered by scope.
+        
+        Args:
+            scope: If provided, return the attributes dict for the requirement
+                   with this scope. If None, return list of all requirement scopes.
+        
+        Returns:
+            - If scope is None: List of scope strings for all requirements.
+            - If scope is provided: Dictionary of attributes for that requirement,
+              or None if no requirement matches the scope.
+        """
+        if scope is None:
+            return [r.scope for r in self.requirements]
+        
+        for req in self.requirements:
+            if req.scope == scope:
+                return req.to_dict()
+        return None
+    
+    def has_requirement(self, identifier: str) -> bool:
+        """Return True if any requirement's scope starts with identifier."""
+        if not identifier:
+            return False
+        norm = identifier.strip("/")
+        for req in self.requirements:
+            if req.scope.strip("/").startswith(norm):
+                return True
+        return False
+    
+    # -------------------------------------------------------------------------
+    # Inputs API
+    # -------------------------------------------------------------------------
+    
+    def get_inputs(self, scope: Optional[str] = None) -> Any:
+        """Get inputs, optionally filtered by scope.
+        
+        Args:
+            scope: If provided, return the attributes dict for the input
+                   with this scope. If None, return list of all input scopes.
+        
+        Returns:
+            - If scope is None: List of scope strings for all inputs.
+            - If scope is provided: Dictionary of attributes for that input,
+              or None if no input matches the scope.
+        """
+        if scope is None:
+            return [i.scope for i in self.inputs]
+        
+        for inp in self.inputs:
+            if inp.scope == scope:
+                return inp.to_dict()
+        return None
+    
+    def has_input(self, identifier: str) -> bool:
+        """Return True if any input's scope starts with identifier."""
+        if not identifier:
+            return False
+        norm = identifier.strip("/")
+        for inp in self.inputs:
+            if inp.scope.strip("/").startswith(norm):
+                return True
+        return False
+    
+    # -------------------------------------------------------------------------
+    # Transforms API
+    # -------------------------------------------------------------------------
+    
+    def get_transforms(self, scope: Optional[str] = None) -> Any:
+        """Get transforms, optionally filtered by scope.
+        
+        Args:
+            scope: If provided, return the attributes dict for the transform
+                   with this scope. If None, return list of all transform scopes.
+        
+        Returns:
+            - If scope is None: List of scope strings for all transforms.
+            - If scope is provided: Dictionary of attributes for that transform,
+              or None if no transform matches the scope.
+        """
+        if scope is None:
+            return [t.scope for t in self.transforms]
+        
+        for trans in self.transforms:
+            if trans.scope == scope:
+                return trans.to_dict()
+        return None
+    
+    def has_transform(self, identifier: str) -> bool:
+        """Return True if any transform's scope starts with identifier."""
+        if not identifier:
+            return False
+        norm = identifier.strip("/")
+        for trans in self.transforms:
+            if trans.scope.strip("/").startswith(norm):
+                return True
+        return False
+    
+    # -------------------------------------------------------------------------
+    # Outputs API
+    # -------------------------------------------------------------------------
+    
+    def get_outputs(self, scope: Optional[str] = None) -> Any:
+        """Get outputs, optionally filtered by scope.
+        
+        Args:
+            scope: If provided, return the attributes dict for the output
+                   with this scope. If None, return list of all output scopes.
+        
+        Returns:
+            - If scope is None: List of scope strings for all outputs.
+            - If scope is provided: Dictionary of attributes for that output,
+              or None if no output matches the scope.
+        """
+        if scope is None:
+            return [o.scope for o in self.outputs]
+        
+        for out in self.outputs:
+            if out.scope == scope:
+                return out.to_dict()
+        return None
+    
+    def has_output(self, identifier: str) -> bool:
+        """Return True if any output's scope starts with identifier."""
+        if not identifier:
+            return False
+        norm = identifier.strip("/")
+        for out in self.outputs:
+            if out.scope.strip("/").startswith(norm):
+                return True
+        return False
+    
+    # -------------------------------------------------------------------------
+    # YAML Loading
+    # -------------------------------------------------------------------------
     
     @classmethod
     def from_yaml_dict(cls, data: Dict[str, Any]) -> "Process":
         """Deserialize a Process from YAML-loaded dict.
         
-        Expected structure:
-            path: str
-            name: str
-            type: "manual" | "natural"
-            time:
-                base_duration: float
-                by_plant?: {taxonomy_item: duration, ...}
-                mtbf?: float (for natural processes)
-            requirements?:
-                infrastructure?: str | list
-                tools?: list of {item, mtbf?}
-                labor?: list of {role, skill?, count?}
-                animals?: list of {role, properties?, count?}
-            inputs?:
-                materials?: list of {item, quantity?, quantity_by_plant?}
-            outputs?:
-                products?: list of {item, quantity?, quantity_by_plant?, quantity_base?, skill_modifier?}
-                waste?: list of {item, quantity?, quantity_by_plant?}
+        Expected structure matches domain_processes.template.yaml.
         """
         path = data.get("path", "")
         name = data.get("name", "")
-        proc_type_str = data.get("type", "manual").lower()
-        process_type = ProcessType.MANUAL if proc_type_str == "manual" else ProcessType.NATURAL
         
-        # Parse duration
+        # Parse time block
         time_spec = data.get("time", {})
-        base_dur = float(time_spec.get("base_duration", time_spec.get("mtbf", 0.0)))
-        variants = time_spec.get("by_plant", {})
-        duration = ProcessDuration(base_duration=base_dur, variants=variants)
+        base_duration = float(time_spec.get("base_duration", 0.0))
+        by_material = {}
+        for mat_path, dur in time_spec.get("by_material", {}).items():
+            by_material[mat_path] = float(dur)
         
         # Parse requirements
         requirements = []
-        reqs = data.get("requirements", {})
-        
-        # Infrastructure
-        if "infrastructure" in reqs:
-            infra = reqs["infrastructure"]
-            if isinstance(infra, str):
-                requirements.append(RequirementInfrastructure(item=infra))
-            elif isinstance(infra, list):
-                for item in infra:
-                    requirements.append(RequirementInfrastructure(item=item if isinstance(item, str) else item.get("item", "")))
-        
-        # Tools
-        for tool_spec in reqs.get("tools", []):
-            item = tool_spec.get("item", "")
-            mtbf = tool_spec.get("mtbf")
-            req = RequirementTool(item=item)
-            if mtbf is not None:
-                req.mtbf = mtbf
-            requirements.append(req)
-        
-        # Labor
-        for labor_spec in reqs.get("labor", []):
-            role = labor_spec.get("role", "")
-            skill = labor_spec.get("skill")
-            count = labor_spec.get("count", 1)
-            req = RequirementLabor(item=role)
-            req.skill = skill
-            req.count = count
-            requirements.append(req)
-        
-        # Animals
-        for animal_spec in reqs.get("animals", []):
-            role = animal_spec.get("role", "")
-            count = animal_spec.get("count", 1)
-            props = animal_spec.get("properties", [])
-            # Convert properties list to dict if needed
-            props_dict = {}
-            if isinstance(props, list):
-                for p in props:
-                    if isinstance(p, dict):
-                        props_dict.update(p)
-                    else:
-                        props_dict["item"] = p
-            elif isinstance(props, dict):
-                props_dict = props
-            
-            req = RequirementAnimal(item=role, properties=props_dict)
-            req.count = count
+        for req_data in data.get("requirements", []) or []:
+            req = Requirement(
+                name=req_data.get("name", ""),
+                scope=req_data.get("scope", ""),
+                material=req_data.get("material"),
+                quantity=float(req_data.get("quantity", 1)),
+                properties=req_data.get("properties", []),
+                mtbf=req_data.get("mtbf"),
+            )
             requirements.append(req)
         
         # Parse inputs
         inputs = []
-        input_spec = data.get("inputs", {})
-        for item_spec in input_spec.get("materials", []):
-            item = item_spec.get("item", "")
-            quantity = item_spec.get("quantity", 1.0)
-            quantity_vars = item_spec.get("quantity_by_plant", {})
-            io = ProcessIO_Input(item=item)
-            io.quantity = quantity
-            io.quantity_variants = quantity_vars
-            inputs.append(io)
+        for inp_data in data.get("inputs", []) or []:
+            inp = Input(
+                name=inp_data.get("name", ""),
+                scope=inp_data.get("scope", ""),
+                material=inp_data.get("material"),
+                quantity=float(inp_data.get("quantity", 1)),
+                properties=inp_data.get("properties", []),
+            )
+            inputs.append(inp)
+        
+        # Parse transforms
+        transforms = []
+        for trans_data in data.get("transforms", []) or []:
+            trans = Transform(
+                name=trans_data.get("name", ""),
+                scope=trans_data.get("scope", ""),
+                material=trans_data.get("material"),
+                quantity=float(trans_data.get("quantity", 1)),
+                properties=trans_data.get("properties", []),
+                add_properties=trans_data.get("add_properties", []),
+                remove_properties=trans_data.get("remove_properties", []),
+                new_scope=trans_data.get("new_scope"),
+                new_material=trans_data.get("new_material"),
+            )
+            transforms.append(trans)
         
         # Parse outputs
         outputs = []
-        output_spec = data.get("outputs", {})
-        for item_spec in output_spec.get("products", []):
-            item = item_spec.get("item", "")
-            quantity = item_spec.get("quantity", item_spec.get("quantity_base", 1.0))
-            quantity_vars = item_spec.get("quantity_by_plant", {})
-            io = ProcessIO_Input(item=item)
-            io.quantity = quantity
-            io.quantity_variants = quantity_vars
-            # Store optional skill_modifier
-            if "skill_modifier" in item_spec:
-                io.set_property("skill_modifier", item_spec["skill_modifier"])
-            outputs.append(io)
-        
-        # Parse waste
-        waste = []
-        for item_spec in output_spec.get("waste", []):
-            item = item_spec.get("item", "")
-            quantity = item_spec.get("quantity", 1.0)
-            quantity_vars = item_spec.get("quantity_by_plant", {})
-            io = ProcessIO_Input(item=item)
-            io.quantity = quantity
-            io.quantity_variants = quantity_vars
-            waste.append(io)
+        for out_data in data.get("outputs", []) or []:
+            out = Output(
+                name=out_data.get("name", ""),
+                scope=out_data.get("scope", ""),
+                material=out_data.get("material"),
+                quantity=float(out_data.get("quantity", 1)),
+                properties=out_data.get("properties", []),
+            )
+            outputs.append(out)
         
         return cls(
             path=path,
             name=name,
-            process_type=process_type,
-            duration=duration,
+            base_duration=base_duration,
+            by_material=by_material,
             requirements=requirements,
             inputs=inputs,
+            transforms=transforms,
             outputs=outputs,
-            waste=waste
         )
     
-    def get_duration(self, item: Optional[str] = None) -> float:
-        """Get process duration, optionally specific to a taxonomy item."""
-        return self.duration.get_duration(item)
-
-    def has_input(self, identifier: str) -> bool:
-        """Return True if this process has an input that matches `identifier`.
-
-        Matching logic:
-        - Matches when the stored input path startswith the query identifier (prefix match).
-        - Also checks quantity variant keys for prefix matches.
-        """
-        if not identifier:
-            return False
-        norm = identifier.strip("/")
-        for io in self.inputs:
-            try:
-                item = getattr(io, "item", None)
-                if isinstance(item, str) and item.strip("/").startswith(norm):
-                    return True
-                qvars = getattr(io, "quantity_variants", None)
-                if isinstance(qvars, dict):
-                    for k in qvars.keys():
-                        if isinstance(k, str) and k.strip("/").startswith(norm):
-                            return True
-            except Exception:
-                continue
-        return False
-
-    def has_output(self, identifier: str) -> bool:
-        """Return True if this process has an output that matches `identifier`.
-
-        Matching logic mirrors `has_input` with prefix semantics.
-        """
-        if not identifier:
-            return False
-        norm = identifier.strip("/")
-        for io in self.outputs:
-            try:
-                item = getattr(io, "item", None)
-                if isinstance(item, str) and item.strip("/").startswith(norm):
-                    return True
-                qvars = getattr(io, "quantity_variants", None)
-                if isinstance(qvars, dict):
-                    for k in qvars.keys():
-                        if isinstance(k, str) and k.strip("/").startswith(norm):
-                            return True
-            except Exception:
-                continue
-        return False
-
-    def is_natural(self) -> bool:
-        """Return True when this Process is defined as a natural process.
-
-        This checks the `process_type` attribute which is set during
-        deserialization from the domain/process YAML. Returns False on any
-        unexpected state.
-        """
-        try:
-            # A process is considered 'natural' for simulation purposes when
-            # it consumes exactly one input and has no explicit requirements.
-            return len(self.inputs) == 1 and (not self.requirements)
-        except Exception:
-            return False
-
-    def get_inputs(self) -> Dict[str, Dict[str, Any]]:
-        """Return a simple mapping of input item -> properties dict.
-
-        The returned dictionary maps the input taxonomy path string to a
-        dictionary of properties derived from the corresponding
-        `ProcessIO_Input` instance (for example: `quantity`,
-        `quantity_variants`, plus any extra properties). If a matching
-        `RequirementTool` exists for the same item, its `mtbf` is merged
-        into the properties under the `mtbf` key.
-        """
-        results: Dict[str, Dict[str, Any]] = {}
-        # Build quick lookup for tool mtbf values keyed by item
-        tool_mtbf: Dict[str, Optional[float]] = {}
-        for req in self.requirements:
-            if isinstance(req, RequirementTool):
-                try:
-                    tool_mtbf[req.item] = req.mtbf
-                except Exception:
-                    tool_mtbf[req.item] = None
-
-        for io in self.inputs:
-            try:
-                item = getattr(io, "item", None)
-                if not isinstance(item, str) or not item:
-                    continue
-                props: Dict[str, Any] = {}
-                # include canonical properties from ProcessIO_Input
-                props.update(getattr(io, "properties", {}) or {})
-                # expose convenience keys
-                props.setdefault("quantity", getattr(io, "quantity", None))
-                props.setdefault("quantity_variants", getattr(io, "quantity_variants", {}))
-                # merge tool mtbf when available for exact item match
-                if item in tool_mtbf:
-                    props.setdefault("mtbf", tool_mtbf.get(item))
-                results[item] = props
-            except Exception:
-                continue
-
-        return results
-
-    def has_as_input(self, identifier: str) -> Optional[Dict[str, Any]]:
-        """Return the input properties dict when this process has `identifier` as input.
-
-        Matching uses the same prefix semantics as `has_input()` (i.e. stored
-        input item paths whose `startswith(identifier)` will match). If a
-        match is found, returns the properties dict produced by
-        `get_inputs()` for that input; otherwise returns `None`.
-        """
-        if not identifier:
-            return None
-        norm = identifier.strip("/")
-        inputs = self.get_inputs()
-        for item_path, props in inputs.items():
-            try:
-                if item_path.strip("/").startswith(norm):
-                    return props
-                # Also check variant keys if present
-                qvars = props.get("quantity_variants")
-                if isinstance(qvars, dict):
-                    for k in qvars.keys():
-                        if isinstance(k, str) and k.strip("/").startswith(norm):
-                            return props
-            except Exception:
-                continue
-        return None
-
-    def get_outputs(self) -> Dict[str, Dict[str, Any]]:
-        """Return a simple mapping of output item -> properties dict.
-
-        Mirrors the semantics of `get_inputs()` but for outputs. Properties
-        will include `quantity`, `quantity_variants` and any extra properties
-        (e.g., `skill_modifier`).
-        """
-        results: Dict[str, Dict[str, Any]] = {}
-        for io in self.outputs:
-            try:
-                item = getattr(io, "item", None)
-                if not isinstance(item, str) or not item:
-                    continue
-                props: Dict[str, Any] = {}
-                props.update(getattr(io, "properties", {}) or {})
-                props.setdefault("quantity", getattr(io, "quantity", None))
-                props.setdefault("quantity_variants", getattr(io, "quantity_variants", {}))
-                results[item] = props
-            except Exception:
-                continue
-
-        return results
-
-    def has_as_output(self, identifier: str) -> Optional[Dict[str, Any]]:
-        """Return the output properties dict when this process has `identifier` as output.
-
-        Uses the same prefix-matching semantics as `has_as_input()`.
-        """
-        if not identifier:
-            return None
-        norm = identifier.strip("/")
-        outputs = self.get_outputs()
-        for item_path, props in outputs.items():
-            try:
-                if item_path.strip("/").startswith(norm):
-                    return props
-                qvars = props.get("quantity_variants")
-                if isinstance(qvars, dict):
-                    for k in qvars.keys():
-                        if isinstance(k, str) and k.strip("/").startswith(norm):
-                            return props
-            except Exception:
-                continue
-        return None
-
-    def get_requirements(self) -> Dict[str, Dict[str, Any]]:
-        """Return a mapping of requirement item -> properties dict.
-
-        Each requirement type contributes a properties dict with sensible
-        keys: `mtbf` for `RequirementTool`, `skill` and `count` for
-        `RequirementLabor`, `count` and any `properties` for
-        `RequirementAnimal`, and an empty dict for
-        `RequirementInfrastructure` unless extra properties are present.
-        """
-        results: Dict[str, Dict[str, Any]] = {}
-        for req in self.requirements:
-            try:
-                item = getattr(req, "item", None)
-                if not isinstance(item, str) or not item:
-                    continue
-                props: Dict[str, Any] = {}
-                # Tool
-                if isinstance(req, RequirementTool):
-                    props["mtbf"] = req.mtbf
-                # Labor
-                if isinstance(req, RequirementLabor):
-                    props["skill"] = req.skill
-                    props["count"] = req.count
-                # Animal
-                if isinstance(req, RequirementAnimal):
-                    props.update(getattr(req, "properties", {}) or {})
-                    props.setdefault("count", req.count)
-                # Infrastructure: include properties if any
-                if isinstance(req, RequirementInfrastructure):
-                    props.update(getattr(req, "properties", {}) or {})
-
-                results[item] = props
-            except Exception:
-                continue
-
-        return results
-
-    def has_requirement(self, identifier: str) -> Optional[Dict[str, Any]]:
-        """Return the requirement properties dict when this process has `identifier` as a requirement.
-
-        Matching uses prefix semantics similar to inputs/outputs.
-        """
-        if not identifier:
-            return None
-        norm = identifier.strip("/")
-        reqs = self.get_requirements()
-        for item_path, props in reqs.items():
-            try:
-                if item_path.strip("/").startswith(norm):
-                    return props
-            except Exception:
-                continue
-        return None
-
-    def has_requirement(self, identifier: str) -> bool:
-        """Return True if this process has a requirement matching `identifier`.
-
-        Matching logic uses prefix semantics against requirement item or stored role.
-        """
-        if not identifier:
-            return False
-        norm = identifier.strip("/")
-        for req in self.requirements:
-            try:
-                item = getattr(req, "item", None)
-                if isinstance(item, str) and item.strip("/").startswith(norm):
-                    return True
-                # Some requirements may store role as 'role' in properties
-                role = None
-                if hasattr(req, "get_property"):
-                    role = req.get_property("role")
-                # Fallback: some requirement classes store role in 'item' already
-                if isinstance(role, str) and role.strip("/").startswith(norm):
-                    return True
-            except Exception:
-                continue
-        return False
-
     def __repr__(self) -> str:
-        return f"Process(path={self.path!r}, type={self.process_type.value}, duration={self.duration.base_duration}h, reqs={len(self.requirements)}, inputs={len(self.inputs)}, outputs={len(self.outputs)})"
+        return (
+            f"Process(path={self.path!r}, name={self.name!r}, "
+            f"duration={self.base_duration}h, "
+            f"reqs={len(self.requirements)}, inputs={len(self.inputs)}, "
+            f"transforms={len(self.transforms)}, outputs={len(self.outputs)})"
+        )

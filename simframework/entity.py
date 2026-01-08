@@ -13,17 +13,13 @@ class Entity:
     Entities model tools, containers, inputs, outputs, and other tangible objects.
     Each entity has:
     - identifier: A taxonomy-based identifier (e.g., Scope path or unique name)
-    - reliability: A measure of functionality (0-10 scale)
     - volume_liters: Volume in liters (float)
     - mass_kg: Mass in kilograms (float)
-    - ablative: A measure of wear/degradation (0-1 scale, where 1 = fully degraded)
     """
 
     identifier: str  # From domain taxonomy (e.g., "environment/temperature/sensor")
-    reliability: int = 10  # Integer 0-10 scale (10 = fully reliable, 0 = non-functional)
     volume_liters: float = 0.0  # Volume in liters
     mass_kg: float = 0.0  # Mass in kilograms
-    ablative: float = 0.0  # 0-1 scale (0 = no degradation, 1 = completely ablated)
     # contents: taxonomy name -> list of Entity instances
     contents: Dict[str, List["Entity"]] = field(default_factory=dict)
     # properties: maps taxonomy full-path (string) -> arbitrary value
@@ -33,15 +29,11 @@ class Entity:
     
 
     def __post_init__(self) -> None:
-        """Validate reliability (int), volume, mass, and ablative values are within bounds and types."""
-        if not isinstance(self.reliability, int) or not (0 <= self.reliability <= 10):
-            raise ValueError(f"reliability must be an int between 0 and 10; got {self.reliability}")
+        """Validate volume, mass, properties, and internal clock types/values."""
         if not isinstance(self.volume_liters, (int, float)) or self.volume_liters < 0.0:
             raise ValueError(f"volume_liters must be a non-negative number; got {self.volume_liters}")
         if not isinstance(self.mass_kg, (int, float)) or self.mass_kg < 0.0:
             raise ValueError(f"mass_kg must be a non-negative number; got {self.mass_kg}")
-        if not 0.0 <= self.ablative <= 1.0:
-            raise ValueError(f"ablative must be between 0 and 1; got {self.ablative}")
 
         # Validate properties dict keys are strings (full-path keys)
         if not isinstance(self.properties, dict):
@@ -121,7 +113,7 @@ class Entity:
         Args:
             amount: The ablation increment (e.g., 0.1 for 10% more wear).
         """
-        self.ablative = min(1.0, self.ablative + amount)
+        raise AttributeError("ablative support was removed; ablate() is no longer available")
 
     def reliability_test(self) -> bool:
         """Perform a reliability test based on the current reliability score.
@@ -129,18 +121,15 @@ class Entity:
         Returns:
             True if the entity passes the reliability test, False otherwise.
         """
-        import random
-
-        roll = random.randint(1, 10)
-        return roll <= self.reliability
+        raise AttributeError("reliability support was removed; reliability_test() is no longer available")
     
     def is_functional(self) -> bool:
-        """Check if the entity is functional based on its reliability and ablative state.
+        """Check basic functional state based on mass/volume/properties presence.
 
-        Returns:
-            True if the entity is functional, False otherwise.
+        This is a simplified placeholder replacing prior reliability/ablative checks.
+        Returns True when the entity has non-zero mass or volume or any properties set.
         """
-        return self.reliability > 0 and self.ablative < 1.0
+        return bool(self.properties) or (self.mass_kg > 0.0) or (self.volume_liters > 0.0)
 
     def set_property(self, key: str, value: Any) -> None:
         """Set a property on this entity.

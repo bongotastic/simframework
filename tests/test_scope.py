@@ -109,14 +109,17 @@ class TestDomain:
         """Domain should be creatable with a name."""
         domain = Domain("EcologicalSim")
         assert domain.name == "EcologicalSim"
-        assert domain.list_all_scopes() == []
+        # Domain initializes with an engine-level heartbeat scope
+        scopes = domain.list_all_scopes()
+        assert len(scopes) == 1
+        assert domain.get_scope("heartbeat") is not None
 
     def test_domain_register_scope(self):
         """Domain should register scopes."""
         domain = Domain("EcologicalSim")
         scope = Scope("biology")
         domain.register_scope(scope)
-        assert len(domain.list_all_scopes()) == 1
+        assert len(domain.list_all_scopes()) == 2
 
     def test_domain_register_scope_hierarchy(self):
         """Domain should register scope hierarchies."""
@@ -127,7 +130,7 @@ class TestDomain:
         domain.register_scope(root)
         domain.register_scope(org)
         domain.register_scope(plant)
-        assert len(domain.list_all_scopes()) == 3
+        assert len(domain.list_all_scopes()) == 4
 
     def test_domain_register_duplicate_scope(self):
         """Domain should reject duplicate scope paths."""
@@ -197,7 +200,8 @@ class TestDomain:
         domain.register_scope(root)
         repr_str = repr(domain)
         assert "EcologicalSim" in repr_str
-        assert "scopes=1" in repr_str
+        # heartbeat scope included
+        assert "scopes=2" in repr_str
 
     def test_is_kind_of_util(self):
         domain = Domain("TestDom")
@@ -244,7 +248,7 @@ class TestScopeIntegration:
             domain.register_scope(scope)
         
         # Verify structure
-        assert len(domain.list_all_scopes()) == 6
+        assert len(domain.list_all_scopes()) == 7
         assert domain.get_scope("biology/organism/plant/growth") is growth
         assert domain.get_scope("biology/organism/animal/reproduction") is reproduction
         

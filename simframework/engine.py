@@ -12,6 +12,8 @@ from typing import Dict, Optional, Any
 import math
 import random
 
+from simframework.scope import Scope
+
 from .scheduler import Scheduler
 from .entity import Entity
 from .event import Event
@@ -78,6 +80,8 @@ class SimulationEngine:
                     try:
                         proc = Process.from_yaml_dict(proc_dict)
                         self.processes[proc.path] = proc
+                        proper_scope = self.ensure_scope(proc.path)
+                        self.domain.register_scope(proper_scope)
                     except Exception:
                         # Best-effort: skip malformed process entries
                         continue
@@ -88,9 +92,13 @@ class SimulationEngine:
         # Schedule the initial heartbeat event so designers don't need to.
         # We keep track of the latest heartbeat event id for potential introspection.
         try:
-            hb_event = Event(data={"heartbeat": True})
-            _, hb_id = self.scheduler.insert_event(hb_event, trigger_time=self.heartbeat)
-            self._heartbeat_event_id: Optional[int] = hb_id
+            hb_event = Event(
+                scope=self.domain.get_scope("heartbeat"),
+                timespan=self.heartbeat,
+                data={'heartbeat': True}
+            )
+            self.scheduler.schedule(self.heartbeat, event=hb_event)
+            self._heartbeat_event_id = hb_event.identifier
         except Exception:
             # If scheduling fails for any reason, record no heartbeat id but do not raise.
             self._heartbeat_event_id = None
@@ -123,6 +131,7 @@ class SimulationEngine:
             self._entity_counter += 1
             if eid not in self.entities:
                 self.entities[eid] = entity
+                entity.identifier = eid
                 return eid
 
     def get_entity(self, entity_id: str) -> Optional[Entity]:
@@ -133,23 +142,7 @@ class SimulationEngine:
     # (System/Agent registries have been removed — use `Entity` and `Person`)
 
     # --- scheduling helpers ---
-    def schedule_for_entity(self, entity_id: str, delay: float, event: Optional[Event] = None, **data) -> tuple[datetime.datetime, int]:
-        """Schedule an event anchored to an `Entity` with id `entity_id`.
-
-        The scheduled `Event` will have its `.system` attribute set to the
-        corresponding `Entity` instance for backward compatibility with
-        existing Event consumers that expect a `.system` attribute.
-        If `event` is not provided, a new Event is created using `data`.
-        """
-        entity = self.get_entity(entity_id)
-        if entity is None:
-            raise KeyError(entity_id)
-        if event is None:
-            event = Event(data=data)
-        event.system = entity
-        return self.scheduler.schedule(delay, event=event, **data)
-
-    def schedule(self, delay: Union[float, datetime.timedelta, datetime.datetime], scope: Optional[object] = None, event_data: Optional[dict] = None) -> tuple[datetime.datetime, int]:
+    def schedule(self, delay: datetime.timedelta, scope: Scope, event_data: Optional[dict] = None, entity: Optional[Entity] = None) -> tuple[datetime.datetime, int]:
         """Create and schedule an Event without requiring the caller to build one.
 
         Args:
@@ -159,31 +152,25 @@ class SimulationEngine:
                 it via `self.domain.get_scope()`; otherwise, the provided
                 object is set directly on the Event.
             event_data: Optional dict to use as the Event.data payload.
+            entity: Optional Entity instance to set as Event.entity_anchor.
 
         Returns:
             Tuple of (scheduled_datetime, event_id).
         """
+        # No event data provided: use empty dict
         if event_data is None:
             event_data = {}
+
         if not isinstance(event_data, dict):
             raise TypeError("event_data must be a dict if provided")
 
-        evt = Event(data=event_data)
-
-        scope_obj = scope
-        # Resolve scope string to Scope object when possible
-        if isinstance(scope, str) and getattr(self, "domain", None) is not None:
-            try:
-                scope_obj = self.domain.get_scope(scope)
-            except Exception:
-                scope_obj = None
-
-        if scope_obj is not None:
-            try:
-                evt.scope = scope_obj
-            except Exception:
-                # best-effort: ignore scope attachment failures
-                pass
+        # Build the event
+        evt = Event(
+            data=event_data,
+            timespan=delay,
+            scope=scope,
+            entity_anchor=entity
+        )
 
         return self.scheduler.schedule(delay, event=evt)
 
@@ -242,7 +229,7 @@ class SimulationEngine:
         try:
             if isinstance(evt.data, dict) and evt.data.get("heartbeat"):
                 # create and schedule next heartbeat relative to scheduler.now
-                next_hb = Event(data={"heartbeat": True})
+                next_hb = Event(scope=self.domain.get_scope("heartbeat"), data={"heartbeat": True})
                 _, new_id = self.scheduler.insert_event(next_hb, trigger_time=self.heartbeat)
                 self._heartbeat_event_id = new_id
         except Exception:
@@ -319,6 +306,47 @@ class SimulationEngine:
                 continue
 
         return None
+
+    def ensure_scope(self, path: str) -> Scope:
+        """Ensure a scope path exists in the engine's domain, creating missing ancestors.
+
+        Args:
+            path: A scope path string with components separated by '/'.
+
+        Returns:
+            The `Scope` corresponding to the final path component.
+
+        Raises:
+            TypeError: if `path` is not a non-empty string.
+        """
+        # Accept Scope objects directly
+        if isinstance(path, Scope):
+            return path
+
+        if not isinstance(path, str) or not path.strip():
+            raise TypeError("path must be a non-empty string")
+
+        # Lazy-create domain if not present
+        if self.domain is None:
+            from .scope import Domain
+
+            self.domain = Domain(self.identifier)
+
+        parts = [p for p in path.split("/") if p]
+        parent = None
+        for i, part in enumerate(parts):
+            full = "/".join(parts[: i + 1])
+            existing = self.domain.get_scope(full)
+            if existing is not None:
+                parent = existing
+                continue
+
+            # Create and register missing scope
+            scope = Scope(name=part, parent=parent)
+            self.domain.register_scope(scope)
+            parent = scope
+
+        return parent
 
     def get_process_including(self, input: str = "", output: str = "") -> list:
         """Return a list of Processes that include the specified input and/or output.

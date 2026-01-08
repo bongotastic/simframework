@@ -1,0 +1,230 @@
+# calendar.yaml
+# Agricultural & Husbandry Schedule for Frankish Estate
+# Dates are formatted as MM-DD
+# "species" can be a single string or a list of strings
+
+events:
+  # --- LATE WINTER: BIRTH & PREPARATION ---
+  
+  # Lambing Season (Ewes give birth)
+  - date: 02-20
+    species: source/animal/domestic/sheep
+    process: process/husbandry/birthing
+  
+  # Field Beans (Fava) Cycle
+  - date: 02-15
+    species: source/plant/species/legume/bean
+    process: process/cultivation/ploughing
+  - date: 02-22
+    species: source/plant/species/legume/bean
+    process: process/cultivation/sowing
+
+  # Calving (Cows give birth)
+  - date: 03-01
+    species: source/animal/domestic/cattle
+    process: process/husbandry/birthing
+
+  # --- SPRING: SOWING & TURNOUT ---
+
+  # Spring Grains (Oats, Barley)
+  - date: 03-01
+    species: 
+      - source/plant/species/cereal/oats
+      - source/plant/species/cereal/barley
+    process: process/cultivation/ploughing
+  - date: 03-07
+    species: 
+      - source/plant/species/cereal/oats
+      - source/plant/species/cereal/barley
+    process: process/cultivation/sowing
+
+  # Fiber Crops (Flax, Hemp)
+  - date: 03-10
+    species:
+      - source/plant/species/fiber/flax
+      - source/plant/species/fiber/hemp
+    process: process/cultivation/sowing
+
+  # Early Garden (Onion, Leek, Mustard)
+  - date: 03-20
+    species:
+      - source/plant/species/vegetable/onion
+      - source/plant/species/vegetable/leek
+      - source/plant/species/herb/mustard
+    process: process/cultivation/sowing
+
+  # Main Garden & Peas
+  - date: 04-01
+    species:
+      - source/plant/species/vegetable/cabbage
+      - source/plant/species/vegetable/beet
+      - source/plant/species/vegetable/carrot
+      - source/plant/species/legume/pea
+    process: process/cultivation/sowing
+
+  # Livestock Turnout (Winter Stalls -> Pasture)
+  - date: 04-15
+    species:
+      - source/animal/domestic/cattle
+      - source/animal/domestic/sheep
+      - source/animal/domestic/ox
+    process: process/husbandry/turnout
+
+  # Bee Swarming Season
+  - date: 05-15
+    species: source/animal/domestic/bees
+    process: process/husbandry/swarm_catching
+
+  # --- EARLY SUMMER: SHEARING & HUNGRY GAP ---
+
+  # Mustard Harvest
+  - date: 06-01
+    species: source/plant/species/herb/mustard
+    process: process/crop/ripening
+  - date: 06-01
+    species: source/animal/domestic/sheep
+    process: process/husbandry/shearing
+  - date: 06-10
+    species: source/plant/species/herb/mustard
+    process: process/cultivation/harvesting
+  - date: 06-17
+    species: source/plant/species/herb/mustard
+    process: process/crop/wilting
+
+  # Early Legume Harvest (Green eating)
+  - date: 06-15
+    species:
+      - source/plant/species/legume/pea
+      - source/plant/species/legume/bean
+    process: process/cultivation/harvesting
+  - date: 06-22
+    species:
+      - source/plant/species/legume/pea
+      - source/plant/species/legume/bean
+    process: process/crop/wilting
+
+  # --- HIGH SUMMER: THE GRAIN HARVEST ---
+
+  # Flax Pulling
+  - date: 07-07
+    species: source/plant/species/fiber/flax
+    process: process/cultivation/harvesting
+  - date: 07-14
+    species: source/plant/species/fiber/flax
+    process: process/crop/wilting
+
+  # Rye Harvest (Winter Grain)
+  - date: 07-01
+    species: source/plant/species/cereal/rye
+    process: process/crop/ripening
+  - date: 07-15
+    species: source/plant/species/cereal/rye
+    process: process/cultivation/harvesting
+  - date: 07-22
+    species: source/plant/species/cereal/rye
+    process: process/crop/wilting
+
+  # Garlic Harvest
+  - date: 07-25
+    species: source/plant/species/herb/garlic
+    process: process/cultivation/harvesting
+  - date: 08-01
+    species: source/plant/species/herb/garlic
+    process: process/crop/wilting
+
+  # Wheat Harvest (Winter Grain)
+  - date: 07-20
+    species: source/plant/species/cereal/wheat
+    process: process/crop/ripening
+  - date: 08-01
+    species: source/plant/species/cereal/wheat
+    process: process/cultivation/harvesting
+  - date: 08-08
+    species: source/plant/species/cereal/wheat
+    process: process/crop/wilting
+
+  # Spring Grains Harvest
+  - date: 08-10
+    species:
+      - source/plant/species/cereal/barley
+      - source/plant/species/cereal/oats
+    process: process/cultivation/harvesting
+  - date: 08-17
+    species:
+      - source/plant/species/cereal/barley
+      - source/plant/species/cereal/oats
+    process: process/crop/wilting
+
+  # Hemp Harvest
+  - date: 08-20
+    species: source/plant/species/fiber/hemp
+    process: process/cultivation/harvesting
+  - date: 08-27
+    species: source/plant/species/fiber/hemp
+    process: process/crop/wilting
+
+  # --- AUTUMN: PANNAGE, PLOUGHING & ROOT HARVEST ---
+
+  # Honey Harvest
+  - date: 09-01
+    species: source/animal/domestic/bees
+    process: process/husbandry/harvest_honey
+
+  # Winter Rye Sowing (Next Year's Crop)
+  - date: 09-01
+    species: source/plant/species/cereal/rye
+    process: process/cultivation/ploughing
+  - date: 09-15
+    species: source/plant/species/cereal/rye
+    process: process/cultivation/sowing
+
+  # Pannage Start (Pigs to woods)
+  - date: 09-15
+    species: source/animal/domestic/pig
+    process: process/husbandry/pannage_start
+
+  # Winter Wheat Sowing (Next Year's Crop)
+  - date: 09-20
+    species: source/plant/species/cereal/wheat
+    process: process/cultivation/ploughing
+  - date: 10-01
+    species: source/plant/species/cereal/wheat
+    process: process/cultivation/sowing
+
+  # Root Vegetable Harvest
+  - date: 10-10
+    species:
+      - source/plant/species/vegetable/beet
+      - source/plant/species/vegetable/carrot
+      - source/plant/species/vegetable/cabbage
+      - source/plant/species/vegetable/onion
+      - source/plant/species/vegetable/leek
+    process: process/cultivation/harvesting
+  - date: 10-17
+    species:
+      - source/plant/species/vegetable/beet
+      - source/plant/species/vegetable/carrot
+      - source/plant/species/vegetable/cabbage
+      - source/plant/species/vegetable/onion
+      - source/plant/species/vegetable/leek
+    process: process/crop/wilting
+
+  # Garlic Planting (Overwintering)
+  - date: 10-30
+    species: source/plant/species/herb/garlic
+    process: process/cultivation/sowing
+
+  # --- EARLY WINTER: SLAUGHTER & SALTING ---
+
+  # Pannage End (Pigs Return)
+  - date: 11-01
+    species: source/animal/domestic/pig
+    process: process/husbandry/pannage_end
+
+  # Martinmas Slaughter (The Cull)
+  - date: 11-11
+    species:
+      - source/animal/domestic/pig
+      - source/animal/domestic/cattle
+      - source/animal/domestic/sheep
+    process: process/husbandry/slaughter
