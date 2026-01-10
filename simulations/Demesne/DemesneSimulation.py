@@ -74,21 +74,6 @@ class DemesneSimulation(SimulationEngine):
         lp = LandPlot(identifier=identifier, stage=stage, vegetation=veg, acreage=acreage)
         self.add_entity(lp)
 
-        # Add an event to register the landplot progress: find the
-        # natural process associated with the `stage` scope and schedule it.
-        process_to_next_stage = self.get_natural_process_for_scope(stage)
-
-        if process_to_next_stage is not None:
-            # Determine a suitable item to pass to Process.get_duration().
-            # Is is theoretically possible that there is no natural process for a landplot 
-            delay = process_to_next_stage.get_duration(veg)
-            self.schedule(
-                entity=lp,
-                delay=delay,
-                scope= self.domain.get_scope(process_to_next_stage.path),
-                event_data={"message": f"Process {process_to_next_stage.name} for LandPlot {lp.name}"}
-            )
-
         return lp
     
     def create_location(self, identifier: str, essence: Optional[Scope] = None):
@@ -104,66 +89,7 @@ class DemesneSimulation(SimulationEngine):
         return location
         
 
-    def get_natural_process_for_scope(self, scope) -> Optional[object]:
-        """Return the natural `Process` associated with `scope`, or None.
 
-        Args:
-            scope: Scope object or scope path string. When a string is
-                provided and this engine has a `domain`, an attempt is made
-                to resolve it to a `Scope` object via `self.domain.get_scope()`.
-
-        Matching strategy:
-            1. Use `self.get_process_including(input=scope)` to find candidate
-               processes that list the scope as an input (prefix-matching).
-            2. Filter candidates for those where `proc.is_natural()` is True.
-            3. Prefer a process with an exact input match (via
-               `proc.has_as_input()`); otherwise return the first natural
-               candidate. Returns `None` if no natural process is found.
-        """
-        # Resolve scope string to domain Scope when possible
-        resolved = scope
-        if isinstance(scope, str) and getattr(self, "domain", None) is not None:
-            try:
-                resolved = self.domain.get_scope(scope)
-            except Exception:
-                # Leave as string if resolution fails
-                resolved = scope
-
-        try:
-            candidates = self.get_process_including(input=resolved)
-        except Exception:
-            return None
-
-        if not candidates:
-            return None
-
-        natural = [p for p in candidates if getattr(p, "is_natural", lambda: False)()]
-        if not natural:
-            return None
-
-        # Prefer exact input match (has_as_input returns props dict on match)
-        norm = None
-        if hasattr(resolved, "full_path"):
-            try:
-                norm = resolved.full_path()
-            except Exception:
-                norm = None
-        if norm is None:
-            try:
-                norm = str(scope)
-            except Exception:
-                norm = None
-
-        if norm is not None:
-            for p in natural:
-                try:
-                    if p.has_as_input(norm) is not None:
-                        return p
-                except Exception:
-                    continue
-
-        # Fallback: return first natural candidate
-        return natural[0]
 
     def run(self):
         """Run the simulation (stub)."""
