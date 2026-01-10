@@ -14,8 +14,6 @@
 # ------------------------------------------------------------------------------
 path: process/manufacturing/example_forging
 name: "Example Robust Process"
-description: "A template process demonstrating consumption, transformation, requirements, and output."
-type: manual # Options: manual, natural, automated
 
 # ------------------------------------------------------------------------------
 # TIME DEFINITION
@@ -45,7 +43,7 @@ requirements:
     material: source/material/hardened_steel # Optional filter
     # "a properties that goes alongside count or quantity for tools is mtbf"
     mtbf: 150.0 # Expected hours of operation before failure
-    count: 1
+    quantity: 1
     properties:
       - property/heavy
       - property/durable
@@ -55,24 +53,6 @@ requirements:
     properties:
       - property/active
       - property/hot
-
-  # TYPE B: LABOUR
-  # "defined by an attribute/... and a count, plus optional properties"
-  - name: "Smith"
-    scope: attribute/profession/blacksmith
-    count: 1
-    properties:
-      - property/skilled
-      - property/available
-
-  # TYPE C: ANIMAL
-  # "defined by a source/.../species/..., a count, and 0+ properties"
-  - name: "Draft Animal"
-    scope: source/living/species/ox
-    count: 2
-    properties:
-      - property/trained
-      - property/strong
 
 # ------------------------------------------------------------------------------
 # 2. INPUTS (0+ items)
@@ -95,6 +75,7 @@ transforms:
     # 1. SELECTION (Filter)
     scope: item/component/blade_blank
     material: source/material/iron
+    quantity: 1
     # Optional: Filter by current properties (e.g., must be 'annealed' to be forged)
     properties: 
       - property/annealed
@@ -107,6 +88,9 @@ transforms:
     remove_properties:
       - property/annealed
       - property/rough_cast
+
+    new_scope: item/component/blade_blank3
+    new_material: item/component/blade_blank2
 
 # ------------------------------------------------------------------------------
 # 4. OUTPUTS (0+ items)

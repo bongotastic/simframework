@@ -4,14 +4,14 @@ from simframework.entity import Entity
 
 def main():
     # Create a jerrycan (container)
-    jerrycan = Entity(identifier="jerrycan", volume_liters=25.0, mass_kg=2.0)
+    jerrycan = Entity(essence="jerrycan", volume_liters=25.0, mass_kg=2.0)
     print("Created jerrycan container:")
-    print(f"  identifier: {jerrycan.identifier}")
+    print(f"  identifier: {jerrycan.essence}")
     print(f"  volume_liters: {jerrycan.volume_liters}")
     print(f"  mass_kg: {jerrycan.mass_kg}")
 
     # Create a fuel entity (1L unit)
-    fuel = Entity(identifier="fuel", volume_liters=1.0, mass_kg=0.8)
+    fuel = Entity(essence="fuel", volume_liters=1.0, mass_kg=0.8)
     
     # Add 25L of fuel (25 units of 1L each) to the jerrycan
     jerrycan.add_to_container(fuel, quantity=25)

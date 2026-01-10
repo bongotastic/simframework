@@ -1,107 +1,246 @@
-# Demesne domain taxonomy
 name: Demesne
 scopes:
-  # --- Event related taxonomy ---
-  - path: heartbeat
-  - path: labour # Labor resolution
-  - path: transit # Movement of goods/people between locations
-  - path: natural 
-  - path: natural/weather # weather variation events
-  - path: natural/weather/season # seasonal weather patterns
-  - path: natural/spoilage # decay of organic materials
-  - path: natural/lifecycle # growth cycles of plants/animals
-  - path: personal # Personal events affecting humans and beasts
-
-
-  # --- Land defined tangible assets grounded in the manorial estate ---
-  - path: land
-  - path: land/cultivated
+  # =======================================================================
+  # 1. ESSENCE (Identity/Function)
+  # The "What is it?" - Permanent economic or functional identity.
+  # =======================================================================
   
-  # Woodlot as a cultivated area and its stages
-  - path: land/cultivated/woodlot
-  - path: land/cultivated/woodlot/cleared
-  - path: land/cultivated/woodlot/juvenile
-  - path: land/cultivated/woodlot/intermediate
-  - path: land/cultivated/woodlot/mature
-  - path: land/cultivated/woodlot/harvesting
-  - path: land/cultivated/woodlot/regrowth
-  - path: land/cultivated/woodlot/degraded
-
-  
-  # Pasture lifecycle / management states
-  - path: land/cultivated/pasture
-  - path: land/cultivated/pasture/resting
-  - path: land/cultivated/pasture/fallow
-  - path: land/cultivated/pasture/sown
-  - path: land/cultivated/pasture/seeded
-  - path: land/cultivated/pasture/grazed
-  - path: land/cultivated/pasture/regrowth
-  - path: land/cultivated/pasture/hay_ready
-  - path: land/cultivated/pasture/harvested_green
-  - path: land/cultivated/pasture/harvested_dry
-  - path: land/cultivated/pasture/degraded
-  - path: land/cultivated/pasture/fertilized
-  
-  # Orchard lifecycle / management states
-
-  - path: land/cultivated/orchard/cleared
-  - path: land/cultivated/orchard/planted
-  - path: land/cultivated/orchard/juvenile
-  - path: land/cultivated/orchard/mature
-  - path: land/cultivated/orchard/mature/flowering
-  - path: land/cultivated/orchard/mature/fruit_developing
-  - path: land/cultivated/orchard/mature/fruit_developing/early
-  - path: land/cultivated/orchard/mature/fruit_developing/late
-  - path: land/cultivated/orchard/mature/fruit_ripening
-  - path: land/cultivated/orchard/harvestable
-  - path: land/cultivated/orchard/harvested
-  - path: land/cultivated/orchard/dormant
-  - path: land/cultivated/orchard/diseased
-  - path: land/cultivated/orchard/abandoned
-
-  # Crop states
-  - path: land/cultivated/crop
-  - path: land/cultivated/crop/tilled
-  - path: land/cultivated/crop/seeded
-  - path: land/cultivated/crop/growing
-  - path: land/cultivated/crop/growing/early
-  - path: land/cultivated/crop/growing/late
-  - path: land/cultivated/crop/harvestable
-  - path: land/cultivated/crop/wilted
-  - path: land/cultivated/crop/harvested
-  - path: land/cultivated/crop/fallow
-  - path: property/land/cultivated/crop/depleted
-
-# Wilderness
-  - path: land/wild
-  - path: land/wild/wooded
-  - path: land/wild/scrub
-  - path: land/wild/wetland
-  - path: land/wild/wetland/pond
-  - path: land/wild/wetland/running_water
-  - path: land/grassland
+  # --- LAND PLOTS (Immutable Classification) ---
+  - path: land/plot/arable
+  - path: land/plot/pasture
+  - path: land/plot/woodland
+  - path: land/plot/wetland
+  - path: land/plot/extraction
+  - path: land/plot/extraction/quarry
+  - path: land/plot/extraction/mine
+  - path: land/plot/residential
+  - path: land/plot/residential/farmstead
+  - path: land/plot/thoroughfare
+  - path: land/plot/thoroughfare/road
+  - path: land/plot/thoroughfare/bridge
+  - path: land/plot/thoroughfare/gathering_place
   - path: land/open_water
   - path: land/open_water/pond
   - path: land/open_water/running_water
 
-  # Built up areas
-  - path: land/built-up
-  - path: land/built-up/infrastructure
-  - path: land/built-up/farmstead
-  - path: land/built-up/thoroughfare
-  - path: land/built-up/thoroughfare/road
-  - path: land/built-up/thoroughfare/bridge
-  - path: land/built-up/thoroughfare/gathering_place
+  # Land Tenure (Legal Designation)
+  - path: land/tenure/demesne
+  - path: land/tenure/mansus
+  - path: land/tenure/glebe
+  - path: land/tenure/commons
 
-  # legal designations
-  - path: land/tenure
-  - path: land/tenure/demesne  # The Lord's direct holdings
-  - path: land/tenure/mansus   # Peasant holdings (taxable)
-  - path: land/tenure/glebe    # Church holdings (tithe-exempt)
-  - path: land/tenure/commons  # Shared grazing/woodland rights
+  # --- ITEM STOCK: RAW MATERIALS (Extracted) ---
+  - path: item/stock/stone/rubble      # Field stone / Blast rock
+  - path: item/stock/stone/flint
+  - path: item/stock/wood/log          # Felled tree
+  - path: item/stock/wood/coppice_rod
+  - path: item/stock/fiber/raw_wool    # Fleece
+  - path: item/stock/fiber/raw_flax
+  - path: item/stock/fiber/raw_hemp
+  - path: item/stock/ore/iron_bog
+  - path: item/stock/earth/clay
 
-  # Social designations
-  - path: social/status
+  # --- ITEM STOCK: PROCESSED (Manufactured) ---
+  - path: item/stock/stone/ashlar      # Cut stone
+  - path: item/stock/stone/lime
+  - path: item/stock/wood/lumber       # Sawn planks
+  - path: item/stock/wood/billet       # Split wood
+  - path: item/stock/wood/timber       # Structural beams
+  - path: item/stock/wood/seasoned_timber
+  - path: item/stock/wood/charcoal
+  - path: item/stock/wood/firewood
+  - path: item/stock/fiber/yarn
+  - path: item/stock/fiber/thread
+  - path: item/stock/fiber/twine
+  - path: item/stock/fiber/rope
+  - path: item/stock/fiber/cloth
+  - path: item/stock/fiber/cloth/felt
+  - path: item/stock/fiber/cloth/woven
+  - path: item/stock/metal/ingot
+  - path: item/stock/metal/wrought_iron
+  - path: item/stock/metal/steely_iron
+  - path: item/stock/leather/cured
+  - path: item/stock/leather/rawhide
+
+  # --- ITEM STOCK: FOOD & BIOLOGICAL ---
+  - path: item/stock/food/grain
+  - path: item/stock/food/flour
+  - path: item/stock/food/bran
+  - path: item/stock/food/bread
+  - path: item/stock/food/meat
+  - path: item/stock/food/meat/cured
+  - path: item/stock/food/meat/fresh
+  - path: item/stock/food/milk
+  - path: item/stock/food/cheese
+  - path: item/stock/food/butter
+  - path: item/stock/food/fruit
+  - path: item/stock/food/vegetable
+  - path: item/stock/other/straw
+  - path: item/stock/other/hay
+  - path: item/stock/other/seed
+  - path: item/stock/other/manure
+  - path: item/stock/other/wax
+  - path: item/stock/other/honey
+  - path: item/stock/other/ash
+
+  # --- ITEM GOODS: TOOLS ---
+  # Handtools
+  - path: item/goods/tool/handtools/knife
+  - path: item/goods/tool/handtools/hammer
+  - path: item/goods/tool/handtools/adze
+  - path: item/goods/tool/handtools/axe
+  - path: item/goods/tool/handtools/hatchet
+  - path: item/goods/tool/handtools/chisel
+  - path: item/goods/tool/handtools/gouge
+  - path: item/goods/tool/handtools/plane
+  - path: item/goods/tool/handtools/drill
+  - path: item/goods/tool/handtools/brace_and_bit
+  - path: item/goods/tool/handtools/file
+  
+  # Agricultural
+  - path: item/goods/tool/agriculture/sickle
+  - path: item/goods/tool/agriculture/scythe
+  - path: item/goods/tool/agriculture/hoe
+  - path: item/goods/tool/agriculture/spade
+  - path: item/goods/tool/agriculture/mattock
+  - path: item/goods/tool/agriculture/plow
+  - path: item/goods/tool/agriculture/plow/coulter
+  - path: item/goods/tool/agriculture/plow/share
+  - path: item/goods/tool/agriculture/flail
+  - path: item/goods/tool/agriculture/winnowing_fan
+
+  # Husbandry
+  - path: item/goods/tool/husbandry/fork
+  - path: item/goods/tool/husbandry/shears
+  - path: item/goods/tool/husbandry/goad
+  - path: item/goods/tool/husbandry/branding_iron
+
+  # Craft & Household
+  - path: item/goods/tool/crafts/loom
+  - path: item/goods/tool/crafts/spindle
+  - path: item/goods/tool/crafts/anvil
+  - path: item/goods/tool/household/cauldron
+  - path: item/goods/tool/household/pot
+  
+  # Transport
+  - path: item/goods/tool/transport/cart
+  - path: item/goods/tool/transport/wagon
+  - path: item/goods/tool/transport/yoke
+  - path: item/goods/tool/transport/harness
+  - path: item/goods/tool/transport/saddle
+  - path: item/goods/tool/transport/horseshoe
+
+  # --- ITEM GOODS: CONTAINERS ---
+  - path: item/goods/container/barrel
+  - path: item/goods/container/sack
+  - path: item/goods/container/basket
+  - path: item/goods/container/bucket
+  - path: item/goods/container/jug
+  - path: item/goods/container/chest
+
+  # --- ITEM STRUCTURES ---
+  - path: item/structure/manor_great_hall
+  - path: item/structure/chapel_church
+  - path: item/structure/mill
+  - path: item/structure/smithy_forge
+  - path: item/structure/bakehouse
+  - path: item/structure/granary
+  - path: item/structure/barn
+  - path: item/structure/worker_cottage
+  - path: item/structure/longhouse
+  - path: item/structure/kiln
+  - path: item/structure/charcoal_clamp
+  - path: item/structure/well
+  - path: item/structure/storage/silo
+
+  # =======================================================================
+  # 2. SUBSTANCE (Material Composition)
+  # The "What is it made of?" - Physical/Chemical makeup.
+  # =======================================================================
+  
+  # --- BIOLOGICAL ---
+  - path: material/biological/plant/wheat
+  - path: material/biological/plant/rye
+  - path: material/biological/plant/barley
+  - path: material/biological/plant/oats
+  - path: material/biological/plant/pea
+  - path: material/biological/plant/bean
+  - path: material/biological/plant/flax
+  - path: material/biological/plant/hemp
+  - path: material/biological/plant/vegetable
+  - path: material/biological/plant/wood/oak
+  - path: material/biological/plant/wood/ash
+  - path: material/biological/plant/wood/elm
+  - path: material/biological/plant/wood/hazel
+  - path: material/biological/plant/fruit
+  - path: material/biological/animal/wool
+  - path: material/biological/animal/leather
+
+  # --- MINERAL ---
+  - path: material/mineral/stone/granite
+  - path: material/mineral/stone/limestone
+  - path: material/mineral/stone/sandstone
+  - path: material/mineral/metal/iron
+  - path: material/mineral/metal/lead
+  - path: material/mineral/earth/clay
+
+  # =======================================================================
+  # 3. STATE (Condition/Phase)
+  # The "How is it?" - Transient, mutable, reversible attributes.
+  # =======================================================================
+
+  # --- BIOLOGICAL LIFECYCLE ---
+  - path: state/growth/dormant
+  - path: state/growth/germinating
+  - path: state/growth/vegetative
+  - path: state/growth/flowering
+  - path: state/growth/fruiting
+  - path: state/growth/ripening
+  - path: state/growth/senescent
+  - path: state/growth/dead
+
+  # --- AGRICULTURAL PHASES ---
+  - path: state/agricultural/tilled
+  - path: state/agricultural/seeded
+  - path: state/agricultural/fallow
+  - path: state/agricultural/harvestable
+  - path: state/agricultural/harvested
+  - path: state/agricultural/grazed
+
+  # --- PHYSICAL CONDITION ---
+  - path: state/condition/raw
+  - path: state/condition/processed
+  - path: state/condition/clean
+  - path: state/condition/muddy
+  - path: state/condition/wet
+  - path: state/condition/dry
+  - path: state/condition/cured
+  - path: state/condition/spoiled
+  - path: state/condition/broken
+  - path: state/condition/rusted
+
+  # --- QUALITY ---
+  - path: state/quality/rough
+  - path: state/quality/fine
+  - path: state/quality/pristine
+  - path: state/quality/degraded
+
+  # =======================================================================
+  # 4. PRESERVED AUXILIARY TREES
+  # =======================================================================
+
+  # --- EVENT RELATED ---
+  - path: heartbeat
+  - path: labour
+  - path: transit
+  - path: natural
+  - path: natural/weather
+  - path: natural/weather/season
+  - path: natural/spoilage
+  - path: natural/lifecycle
+  - path: personal
+
+  # --- SOCIAL ---
   - path: social/status/noble
   - path: social/status/knight
   - path: social/status/household
@@ -109,39 +248,6 @@ scopes:
   - path: social/status/serf
   - path: social/status/slave
 
-  # --- SOURCE TAXONOMY (Biological/Physical Origins) ---
-  # Source defines the origin of materials, organisms, and other entities
-  - path: source
-  
-  # --- ANIMALS (Domestic and Wild) ---
-  - path: source/animal
-  - path: source/animal/human
-  - path: source/animal/domestic
-  - path: source/animal/domestic/cattle
-  - path: source/animal/domestic/ox
-  - path: source/animal/domestic/sheep
-  - path: source/animal/domestic/goat
-  - path: source/animal/domestic/pig
-  - path: source/animal/domestic/horse
-  - path: source/animal/domestic/mule
-  - path: source/animal/domestic/donkey
-  - path: source/animal/domestic/dog
-  - path: source/animal/domestic/poultry
-  - path: source/animal/domestic/poultry/chicken
-  - path: source/animal/domestic/poultry/goose
-  - path: source/animal/domestic/poultry/duck
-  - path: source/animal/domestic/bees
-  - path: source/animal/wild
-  - path: source/animal/wild/deer
-  - path: source/animal/wild/boar
-  - path: source/animal/wild/hare
-  - path: source/animal/wild/wildfowl
-  - path: source/animal/aquatic
-  - path: source/animal/aquatic/fish
-
-  # --- SOCIAL ROLES (Manor roles) ---
-  # Roles are social constructs defining expected behaviors and duties
-  - path: social/role
   - path: social/role/lord
   - path: social/role/steward
   - path: social/role/bailiff
@@ -183,475 +289,97 @@ scopes:
   - path: social/role/pantryman
   - path: social/role/kennel_master
 
-# Attribute taxonomy
-# Attrinutes are atttributable qualities of people in the simulation
-  - path: attributes
-  - path: attributes/skill
-  - path: attributes/skill/cultivation    # Knowledge of soil, seasons, and plant cycles
-  - path: attributes/skill/harvesting     # Physical efficiency with scythes, flails, and sickles
-  - path: attributes/skill/husbandry      # Biological care: birthing, feeding, shearing, health (Shepherds/Grooms)
-  - path: attributes/skill/teamster       # Draft control: Driving oxen/horses under load (Ploughmen/Carters)
-  - path: attributes/skill/woodcraft      # Shaping wood: Joinery, coopering, wheelwrighting
-  - path: attributes/skill/construction   # Shaping stone/clay: Wall repair, daubing, mortar mixing
-  - path: attributes/skill/smithing       # Hot work: Metal shaping (Smiths/Farriers)
-  - path: attributes/skill/textile_arts   # Fiber arts: Spinning, weaving, sewing (essential for female serf labor value)
-  - path: attributes/skill/stewardship    # Numeracy, inventory management, personnel oversight (Reeves/Stewards)
-  - path: attributes/skill/provisioning   # Food transformation: Brewing, baking, salting, preserving
-  - path: attributes/skill/foraging       # Extraction: Hunting, fishing, felling trees safely
+  # --- ATTRIBUTES (Skills) ---
+  - path: attributes/skill/cultivation
+  - path: attributes/skill/harvesting
+  - path: attributes/skill/husbandry
+  - path: attributes/skill/teamster
+  - path: attributes/skill/woodcraft
+  - path: attributes/skill/construction
+  - path: attributes/skill/smithing
+  - path: attributes/skill/textile_arts
+  - path: attributes/skill/stewardship
+  - path: attributes/skill/provisioning
+  - path: attributes/skill/foraging
+  - path: attributes/strength
+  - path: attributes/intelligence
+  - path: attributes/empathy
+  - path: attributes/agility
 
+  # --- TIME ---
+  - path: time/season/winter
+  - path: time/season/spring_sowing
+  - path: time/season/summer_growing
+  - path: time/season/harvest
+  - path: time/holiday/michaelmas
+  - path: time/holiday/martinmas
+  - path: time/holiday/christmas
+  - path: time/holiday/easter
+  - path: time/holiday/st_johns_day
 
-  # --- STRUCTURES (manorial estate buildings and works) ---
-  # A structure is a built asset fixed to land
-  - path: item/structure
-  - path: item/structure/manor_great_hall
-  - path: item/structure/chapel_church
-  - path: item/structure/priest_house
-  - path: item/structure/steward_house
-  - path: item/structure/granary
-  - path: item/structure/byre_cowhouse
-  - path: item/structure/stable_sumpter_house
-  - path: item/structure/pigsty
-  - path: item/structure/sheepfold
-  - path: item/structure/bakehouse
-  - path: item/structure/brewhouse
-  - path: item/structure/mill
-  - path: item/structure/mill/watermill
-  - path: item/structure/mill/hand_or_animal_mill
-  - path: item/structure/miller_house
-  - path: item/structure/smithy_forge
-  - path: item/structure/carpenter_workshop
-  - path: item/structure/cooperage
-  - path: item/structure/tannery
-  - path: item/structure/storehouse
-  - path: item/structure/barn_hay_barn
-  - path: item/structure/tithe_barn     # Distinct from regular barn; for tax storage
-  - path: item/structure/cart_shed
-  - path: item/structure/dovecote
-  - path: item/structure/kennels
-  - path: item/structure/apiary
-  - path: item/structure/fishpond
-  - path: item/structure/fishhouse
-  - path: item/structure/weir
-  - path: item/structure/millpond_leat_sluice
-  - path: item/structure/lime_kiln
-  - path: item/structure/charcoal_clamp
-  - path: item/structure/gatehouse_toll
-  - path: item/structure/worker_cottage
-  - path: item/structure/longhouse
-  - path: item/structure/cellar_storage
-  - path: item/structure/watch_tower
-  - path: item/structure/oven_house
-  - path: item/structure/butchery
-  - path: item/structure/forge_yard
-  - path: item/structure/fodder_shed
-  - path: item/structure/pond_control_works
-  - path: item/structure/communal_threshing_floor
-  - path: item/structure/midden
-  - path: item/structure/well
-  - path: item/structure/latrine
-  - path: item/structure/dye_works
-  - path: item/structure/retting_pond # Specific water feature for rotting flax/hemp
-
-# Goods are items made of heterogeneous materials intended for use/trade
-# Tools are usually durable goods used to facilitate work
-  - path: item/goods/tools
-  - path: item/goods/tools/handtools
-  - path: item/goods/tools/handtools/knife
-  - path: item/goods/tools/handtools/hammer
-  - path: item/goods/tools/handtools/adze
-  - path: item/goods/tools/handtools/axe
-  - path: item/goods/tools/handtools/hatchet
-  - path: item/goods/tools/handtools/chisel
-  - path: item/goods/tools/handtools/gouge
-  - path: item/goods/tools/handtools/plane
-  - path: item/goods/tools/handtools/drill
-  - path: item/goods/tools/handtools/brace_and_bit
-  - path: item/goods/tools/handtools/file
-
-  # Agricultural Tools
-  - path: item/goods/tools/agriculture
-  - path: item/goods/tools/agriculture/harvesting
-  - path: item/goods/tools/agriculture/harvesting/sickle
-  - path: item/goods/tools/agriculture/harvesting/scythe
-  - path: item/goods/tools/agriculture/hoe
-  - path: item/goods/tools/agriculture/spade
-  - path: item/goods/tools/agriculture/mattock
-  - path: item/goods/tools/agriculture/plow
-  - path: item/goods/tools/agriculture/plow/coulter
-  - path: item/goods/tools/agriculture/plow/share
-  - path: item/goods/tools/agriculture/flail
-  - path: item/goods/tools/agriculture/winnowing_fan
-
-  # Animal Husbandry (General)
-  - path: item/goods/tools/husbandry
-  - path: item/goods/tools/husbandry/fork
-  - path: item/goods/tools/husbandry/shears
-  - path: item/goods/tools/husbandry/goad
-  - path: item/goods/tools/husbandry/branding_iron
-
-  # Mechanical / Complex
-  - path: item/goods/tools/mechanical
-  - path: item/goods/tools/mechanical/auger
-  - path: item/goods/tools/mechanical/quern
-  - path: item/goods/tools/mechanical/press
-
-  # Household
-  - path: item/goods/tools/household
-  - path: item/goods/tools/household/mortar
-  - path: item/goods/tools/household/pestle
-  - path: item/goods/tools/household/fire_steel
-  - path: item/goods/tools/household/cauldron
-  - path: item/goods/tools/household/tripod
-  - path: item/goods/tools/household/flesh_hook
-
-  # Craft Specific
-  - path: item/goods/tools/crafts
-  - path: item/goods/tools/crafts/coopering
-  - path: item/goods/tools/crafts/coopering/drawknife
-  - path: item/goods/tools/crafts/coopering/driver
-  - path: item/goods/tools/crafts/leatherworking
-  - path: item/goods/tools/crafts/leatherworking/awl
-  - path: item/goods/tools/crafts/leatherworking/scraper
-  - path: item/goods/tools/crafts/textile
-  - path: item/goods/tools/crafts/textile/spindle
-  - path: item/goods/tools/crafts/textile/whorl
-  - path: item/goods/tools/crafts/textile/loom_weight
-  - path: item/goods/tools/crafts/textile/comb
-  - path: item/goods/tools/crafts/textile/distaff
-  - path: item/goods/tools/crafts/textile/hackle
-  - path: item/goods/tools/crafts/textile/teasel
-  - path: item/goods/tools/crafts/sewing
-  - path: item/goods/tools/crafts/sewing/needle
-  - path: item/goods/tools/crafts/sewing/shears_cloth
-  - path: item/goods/tools/crafts/sewing/slickstone
-  - path: item/goods/tools/crafts/sewing/pin
-  - path: item/goods/tools/crafts/smithing
-  - path: item/goods/tools/crafts/smithing/anvil
-  - path: item/goods/tools/crafts/smithing/hammer
-  - path: item/goods/tools/crafts/smithing/tongs
-  - path: item/goods/tools/crafts/smithing/bellows
-
-  # Transport & Draft Equipment (New Section)
-  - path: item/goods/tools/transport
+  # --- BIOLOGICAL SOURCE / SPECIES ---
+  # Distinct from 'material' (composition). These define living species/agents.
   
-  # Vehicles
-  - path: item/goods/tools/transport/vehicle
-  - path: item/goods/tools/transport/vehicle/wagon       # "carrum" - 4-wheeled (heavy/baggage)
-  - path: item/goods/tools/transport/vehicle/cart        # "plaustrum" - 2-wheeled (farm work)
-  - path: item/goods/tools/transport/vehicle/litter      # "basterna" - for enclosed travel
-  
-  # Tack & Harness
-  - path: item/goods/tools/transport/tack
-  - path: item/goods/tools/transport/tack/yoke           # "jugum" - Primary draft gear for oxen
-  - path: item/goods/tools/transport/tack/harness        # Breast-strap style (for horses)
-  - path: item/goods/tools/transport/tack/traces         # Leather/rope connecting gear
-  - path: item/goods/tools/transport/tack/saddle         # "sella" - Wooden frame
-  - path: item/goods/tools/transport/tack/pack_saddle    # "clitella" - For sumpter animals (mules/horses)
-  - path: item/goods/tools/transport/tack/pannier        # Wicker side-baskets for pack saddles
-  - path: item/goods/tools/transport/tack/bridle         # "frenum"
-  - path: item/goods/tools/transport/tack/bit            # Iron mouthpiece
-  - path: item/goods/tools/transport/tack/halter         # "capistrum" - Rope/leather for leading
-  - path: item/goods/tools/transport/tack/stirrup        # "stapes" - Carolingian adoption phase
-  - path: item/goods/tools/transport/tack/hobble         # Restraints for grazing
-  - path: item/goods/tools/transport/tack/horseshoe      # Iron shoes (increasingly common in Carolingian era)
-
-  # --- CONTAINERS (Preserved) ---
-  # containers are goods designed to hold other items, materials, or substances
-  - path: item/goods/containers
-  - path: item/goods/containers/storage
-  - path: item/goods/containers/storage/barrel
-  - path: item/goods/containers/storage/chest
-  - path: item/goods/containers/storage/bin
-  - path: item/goods/containers/storage/sack
-  - path: item/goods/containers/storage/basket
-  - path: item/goods/containers/transport
-  - path: item/goods/containers/transport/wineskin
-  - path: item/goods/containers/transport/bucket
-  - path: item/goods/containers/transport/pouch
-  - path: item/goods/containers/transport/satchel
-  - path: item/goods/containers/vessel
-  - path: item/goods/containers/vessel/jar
-  - path: item/goods/containers/vessel/jug
-  - path: item/goods/containers/vessel/bowl
-  - path: item/goods/containers/vessel/plate
-  - path: item/goods/containers/vessel/cup
-  - path: item/goods/containers/vessel/trough
-
-  # --- FOOD (New Section) ---
-  - path: item/goods/food
-  - path: item/goods/food/bread
-  - path: item/goods/food/bread/wheat_loaf
-  - path: item/goods/food/bread/rye_loaf
-  - path: item/goods/food/bread/maslin_loaf # Mixed wheat/rye
-  - path: item/goods/food/bread/flatbread
-  - path: item/goods/food/pottage
-
-  # --- INTERMEDIATE GOODS ---
-  # Stock materials used in crafting finished goods
-  - path: item/goods/stock
-  
-  # Wood Stock
-  - path: item/goods/stock/wood
-  - path: item/goods/stock/wood/timber
-  - path: item/goods/stock/wood/elastic       # Ash, Hickory (Shock absorption)
-  - path: item/goods/stock/wood/structural    # Oak, Elm (Durability)
-  - path: item/goods/stock/wood/fine          # Boxwood, Fruitwood (Turning/Carving)
-  - path: item/goods/stock/wood/coppice       # Hazel, Willow (Flexible shoots)
-  - path: item/goods/stock/wood/resin         # Pine pitch
-  - path: item/goods/stock/wood/seasoned      # Seasoned/air-dried timber for charcoal/woodwork
-
-  - path: item/goods/stock/wood/billet      # Split/hewn logs (Handles, Spokes)
-  - path: item/goods/stock/wood/plank       # Radially split boards (Construction)
-  - path: item/goods/stock/wood/withe       # Green soaked rods (Binding/Hoops)
-  - path: item/goods/stock/wood/block       # Seasoned heartwood chunks (Hubs/Bowls)
-
-  # Metal Stock
-  - path: item/goods/stock/metal
-  - path: item/goods/stock/metal/wrought_iron  # Low carbon, ductile (Hardware)
-  - path: item/goods/stock/metal/steely_iron   # Carburized/Bloomery steel (Edges)
-
-  # Textile & Leather
-  - path: item/goods/textile
-  - path: item/goods/textile/leather
-  - path: item/goods/textile/leather/cured     # Tanned/Tawed (Flexible)
-  - path: item/goods/textile/leather/rawhide   # Untanned (Hard/Shrinking)
-  
-  - path: item/goods/textile/thread    # Spun thread (linen/woolen)
-  - path: item/goods/textile/thread/linen
-  - path: item/goods/textile/thread/wool
-  - path: item/goods/textile/thread/string
-  - path: item/goods/textile/thread/string/linen
-  - path: item/goods/textile/thread/twine
-  - path: item/goods/textile/thread/twine/linen
-  - path: item/goods/textile/thread/twine/wool
-
-  - path: item/goods/textile/cloth     # Woven cloth (linen, woolen)
-  - path: item/goods/textile/cloth/linen
-  - path: item/goods/textile/cloth/wool
-  - path: item/goods/textile/cloth/wool/felted
-  - path: item/goods/textile/cloth/wool/woven
-
-  # Ceramic & Stone Goods
-  - path: item/goods/ceramic
-  - path: item/goods/ceramic/fired       # Pottery/Weights
-  - path: item/goods/stone
-  - path: item/goods/stone/dressed       # Roughly shaped stone
-
-  # Dyes
-  - path: item/goods/dye
-  - path: item/goods/dye/woad
-  - path: item/goods/dye/madder
-  - path: item/goods/dye/weld
-
-  # Hardware / Fasteners
-  - path: item/goods/hardware
-  - path: item/goods/hardware/treenail # Wooden peg (standard joinery fastener)
-  - path: item/goods/hardware/nail     # Iron nail (expensive, used sparingly)
-  - path: item/goods/hardware/hinge    # Iron strap hinge
-  - path: item/goods/hardware/rope     # Hemp/bast fiber for lashing
-  - path: item/goods/hardware/rope/hemp
-  - path: item/goods/hardware/rope/cord
-
-
-
-  # Water materials
-  - path: source/inorganic
-  - path: source/inorganic/water
-  - path: source/inorganic/water/drinking_water
-  - path: source/inorganic/water/dirty_water
-  - path: source/inorganic/mineral
-  - path: source/inorganic/mineral/iron_ore     # Bog iron / Rock ore
-  - path: source/inorganic/mineral/stone        # Basalt (Quern), Flint
-  - path: source/inorganic/mineral/clay         # River clay
-
-  # --- PLANT TAXONOMY (economic species for the Demesne) ---
+  # Plants (Restored)
   - path: source/plant
-
-  # --- PLANT SPECIES (Living crops/cultivars) ---
   - path: source/plant/species
   - path: source/plant/species/cereal
   - path: source/plant/species/cereal/wheat
   - path: source/plant/species/cereal/rye
   - path: source/plant/species/cereal/barley
   - path: source/plant/species/cereal/oats
-
   - path: source/plant/species/legume
   - path: source/plant/species/legume/pea
   - path: source/plant/species/legume/bean
-
   - path: source/plant/species/vegetable
   - path: source/plant/species/vegetable/onion
   - path: source/plant/species/vegetable/leek
   - path: source/plant/species/vegetable/cabbage
   - path: source/plant/species/vegetable/beet
   - path: source/plant/species/vegetable/carrot
-
   - path: source/plant/species/fiber
   - path: source/plant/species/fiber/flax
   - path: source/plant/species/fiber/hemp
-
   - path: source/plant/species/herb
   - path: source/plant/species/herb/garlic
   - path: source/plant/species/herb/mustard
-
   - path: source/plant/species/forage
   - path: source/plant/species/forage/clover
   - path: source/plant/species/forage/grass
-
   - path: source/plant/species/fruit
   - path: source/plant/species/fruit/apple
   - path: source/plant/species/fruit/pear
   - path: source/plant/species/fruit/plum
   - path: source/plant/species/fruit/cherry
-
   - path: source/plant/species/vine
   - path: source/plant/species/vine/grape
-
   - path: source/plant/species/tree
   - path: source/plant/species/tree/oak
   - path: source/plant/species/tree/ash
   - path: source/plant/species/tree/elm
   - path: source/plant/species/tree/hazel
-
   - path: source/plant/species/dye
   - path: source/plant/species/dye/woad
   - path: source/plant/species/dye/madder
   - path: source/plant/species/dye/weld
 
-  # --- ITEM TAXONOMY ---
-  - path: item
-  - path: item/organic
-  - path: item/organic/waste
-  - path: item/organic/waste/rotting_matter
-  - path: item/organic/waste/compost
-
-  # --- ANIMAL PRODUCTS ---
-  - path: item/organic/animal
-  - path: item/organic/animal/hide
-  - path: item/organic/animal/bone_horn
-  - path: item/organic/animal/fiber
-  - path: item/organic/animal/wool
-  - path: item/organic/animal/meat
-  - path: item/organic/animal/meat/cured
-  - path: item/organic/animal/meat/fresh
-  - path: item/organic/animal/meat/fresh/mutton
-  - path: item/organic/animal/meat/fresh/lamb
-  - path: item/organic/animal/milk
-  - path: item/organic/animal/milk/sheep_milk
-  - path: item/organic/animal/milk/sour_milk
-  - path: item/organic/animal/cheese
-  - path: item/organic/animal/butter
-  - path: item/organic/animal/manure
-  - path: item/organic/animal/sinew
-  - path: item/organic/animal/gut
-
-  # --- PLANT PRODUCTS (Harvested/processed outputs) ---
-  - path: item/organic/plant
-
- # Edible Harvest (Primary)
-  - path: item/organic/plant/grain
-  - path: item/organic/plant/seed
-  - path: item/organic/plant/seed_stock
-  - path: item/organic/plant/nut
-  - path: item/organic/plant/fruit
-  - path: item/organic/plant/dried_pulse
-  - path: item/organic/plant/fresh_vegetable
-  - path: item/organic/plant/root_vegetable
-  - path: item/organic/plant/leaf_vegetable
-  - path: item/organic/plant/flower
-
-  # Plant Byproducts (Residue & Fodder)
-  - path: item/organic/plant/sheaf
-  - path: item/organic/plant/straw
-  - path: item/organic/plant/chaff
-  - path: item/organic/plant/haulm
-  - path: item/organic/plant/pods
-  - path: item/organic/plant/stalks
-  - path: item/organic/plant/tops
-  - path: item/organic/plant/roots
-  - path: item/organic/plant/hay
-  - path: item/organic/plant/silage
-
-  # Processed Food & Drink
-  - path: item/organic/plant/flour
-  - path: item/organic/plant/bran
-  - path: item/organic/plant/groats
-  - path: item/organic/plant/mill_dust
-  - path: item/organic/plant/malt
-  - path: item/organic/plant/oil
-  - path: item/organic/plant/press_cake
-  - path: item/organic/plant/pomace
-  - path: item/organic/plant/must
-  - path: item/organic/plant/cider
-  - path: item/organic/plant/wine
-
-  # Construction & Crafting
-  - path: item/organic/plant/timber
-  - path: item/organic/plant/plank        # Split or sawn boards
-  - path: item/organic/plant/wattle       # Flexible rods (hazel/willow) for weaving walls
-  - path: item/organic/plant/shingle      # "scindula" - Cleft wood roofing tiles
-  - path: item/organic/plant/lath         # Thin strips for supporting plaster/thatch
-  - path: item/organic/plant/thatch       # Straw (rye) or water reed
-  - path: item/organic/plant/sod          # Turf blocks
-  - path: item/organic/plant/firewood
-  - path: item/organic/plant/charcoal
-  - path: item/organic/plant/bark
-  - path: item/organic/plant/fiber
-  - path: item/organic/plant/shives
-  - path: item/organic/plant/hulls
-  - path: item/organic/plant/withies
-  - path: item/organic/plant/woad_ball
-  - path: item/organic/plant/ash_material
-  - path: item/organic/plant/dried_root
-
-  # Medicinals & Extracts
-  - path: item/organic/plant/dried_herb
-  - path: item/organic/plant/essential_oil
-
-  
-
-  # --- INORGANIC MATERIALS ---
-  - path: item/inorganic
-  
-  # Stone / Masonry
-  - path: item/inorganic/stone
-  - path: item/inorganic/stone/cut        # "ashlar" - Rare, high status/ecclesiastical
-  - path: item/inorganic/stone/rubble     # Field stones for foundations
-  - path: item/inorganic/stone/spolia     # Reused Roman brick/stone
-  - path: item/inorganic/stone/lime       # Burnt limestone for mortar/whitewash
-  - path: item/inorganic/stone/sand       # Aggregate for mortar
-  - path: item/inorganic/stone/slate      # Roofing slate (if applicable)
-
-  # Earth / Clay
-  - path: item/inorganic/earth
-  - path: item/inorganic/earth/daub       # Clay/dung/straw mixture
-  - path: item/inorganic/earth/clay       # Raw clay
-
-  # Metal
-  - path: item/inorganic/metal
-  - path: item/inorganic/metal/lead       # Sheet lead (roofing)
-  - path: item/inorganic/metal/iron       # Raw iron
-  
-  # Fuel (Inorganic)
-  - path: item/inorganic/fuel
-  - path: item/inorganic/fuel/coal
-
-  # Time taxonomy (seasons)
-  - path: time
-  - path: time/season/winter
-  - path: time/season/spring_sowing
-  - path: time/season/summer_growing
-  - path: time/season/harvest
-  - path: time/holiday
-  # The "Fiscal Year End" - Settling Debts & Governance
-  - path: time/holiday/michaelmas      # Sept 29
-  # The "Livestock Culling" - Mass Slaughter & Preservation
-  - path: time/holiday/martinmas       # Nov 11
-  # The "Winter Rent" - Dues in firewood, poultry, & cloth
-  - path: time/holiday/christmas       # Dec 25
-  # The "Spring Rent" - Dues in eggs, labor allocation
-  - path: time/holiday/easter
-  # The "Summer Checkpoint" - Hay harvest, shearing, mid-year assessments
-  - path: time/holiday/st_johns_day    # June 24 (Midsummer)
-
-systems: []
+  # Animals (Preserved)
+  - path: source/animal/human
+  - path: source/animal/domestic/cattle
+  - path: source/animal/domestic/ox
+  - path: source/animal/domestic/sheep
+  - path: source/animal/domestic/goat
+  - path: source/animal/domestic/pig
+  - path: source/animal/domestic/horse
+  - path: source/animal/domestic/mule
+  - path: source/animal/domestic/donkey
+  - path: source/animal/domestic/dog
+  - path: source/animal/domestic/poultry/chicken
+  - path: source/animal/domestic/poultry/goose
+  - path: source/animal/domestic/poultry/duck
+  - path: source/animal/domestic/bees
+  - path: source/animal/wild/deer
+  - path: source/animal/wild/boar
+  - path: source/animal/wild/hare
+  - path: source/animal/wild/wildfowl
+  - path: source/animal/aquatic/fish

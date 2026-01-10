@@ -14,7 +14,7 @@ class LandPlot(Entity):
         vegetation: Optional[Scope] - the taxonomic scope specifying what's growing
         acreage: float - area of the plot in acres (non-negative)
     """
-
+    essence: Scope = field(default=Scope(name="land/plot/arable"), init=False)
     stage: Optional[Scope] = None
     vegetation: Optional[Scope] = None
     acreage: float = 0.0

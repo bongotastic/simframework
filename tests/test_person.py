@@ -4,7 +4,7 @@ from simframework.engine import SimulationEngine
 
 def test_person_entity_basic():
     eng = SimulationEngine()
-    p = Person(identifier="alice")
+    p = Person(essence="alice")
     eng.add_entity(p, "alice")
     assert eng.get_entity("alice") is p
     assert p.name == "alice"

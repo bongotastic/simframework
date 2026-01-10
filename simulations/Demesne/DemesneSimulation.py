@@ -4,6 +4,8 @@ from typing import Optional
 from datetime import datetime
 from simframework.engine import SimulationEngine
 
+from simframework.entity import Entity
+from simframework.scope import Scope
 from simulations.Demesne.landplot import LandPlot
 
 
@@ -39,7 +41,7 @@ class DemesneSimulation(SimulationEngine):
         """Create person agents (stub)."""
         pass
 
-    def create_landplot(self, identifier: Optional[str] = None, *, stage_path: Optional[str] = None, vegetation_path: Optional[str] = None, acreage: float = 1.0) -> LandPlot:
+    def create_landplot(self, identifier: Optional[str] = None, *, essence: Optional[Scope] = None, stage_path: Optional[str] = None, vegetation_path: Optional[str] = None, acreage: float = 1.0) -> LandPlot:
         """Create a `LandPlot` instance resolved against this engine's `domain`.
 
         Args:
@@ -83,6 +85,19 @@ class DemesneSimulation(SimulationEngine):
             )
 
         return lp
+    
+    def create_location(self, identifier: str, essence: Optional[Scope] = None):
+        """Create a location entity (stub)."""
+        unique_id = self.NewUniqueIdentifier(identifier)
+
+        if type(essence) == str:
+            essence = self.domain.get_scope(essence)
+        
+        location = Entity(essence=essence, identifier=unique_id)
+        self.add_entity(location)
+        
+        return location
+        
 
     def get_natural_process_for_scope(self, scope) -> Optional[object]:
         """Return the natural `Process` associated with `scope`, or None.

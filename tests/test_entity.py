@@ -4,16 +4,16 @@ from simframework.entity import Entity
 
 def test_entity_creation():
     """Test creating an entity with valid parameters."""
-    entity = Entity(identifier="environment/temperature/sensor", volume_liters=2.5, mass_kg=1.2)
-    assert entity.identifier == "environment/temperature/sensor"
+    entity = Entity(essence="environment/temperature/sensor", volume_liters=2.5, mass_kg=1.2)
+    assert entity.essence == "environment/temperature/sensor"
     assert entity.volume_liters == pytest.approx(2.5)
     assert entity.mass_kg == pytest.approx(1.2)
 
 
 def test_entity_defaults():
     """Test entity creation with default values."""
-    entity = Entity(identifier="tool/hammer")
-    assert entity.identifier == "tool/hammer"
+    entity = Entity(essence="tool/hammer")
+    assert entity.essence == "tool/hammer"
     assert entity.volume_liters == pytest.approx(0.0)  # Default volume
     assert entity.mass_kg == pytest.approx(0.0)  # Default mass
     # No reliability/ablative fields; defaults checked above
@@ -25,35 +25,35 @@ def test_entity_defaults():
 def test_volume_and_mass_validation():
     """Test volume_liters and mass_kg must be non-negative numbers."""
     # Valid bounds
-    Entity(identifier="test", volume_liters=0.0)
-    Entity(identifier="test", volume_liters=2.5)
-    Entity(identifier="test", mass_kg=0.0)
-    Entity(identifier="test", mass_kg=2.5)
+    Entity(essence="test", volume_liters=0.0)
+    Entity(essence="test", volume_liters=2.5)
+    Entity(essence="test", mass_kg=0.0)
+    Entity(essence="test", mass_kg=2.5)
 
     # Invalid volume: negative
     with pytest.raises(ValueError, match="volume_liters must be a non-negative number"):
-        Entity(identifier="test", volume_liters=-0.1)
+        Entity(essence="test", volume_liters=-0.1)
 
     # Invalid mass: negative
     with pytest.raises(ValueError, match="mass_kg must be a non-negative number"):
-        Entity(identifier="test", mass_kg=-0.1)
+        Entity(essence="test", mass_kg=-0.1)
 
 
 def test_container_add_query_and_remove():
     """Test adding, querying, and removing entities from a container."""
-    parent = Entity(identifier="box")
+    parent = Entity(essence="box")
     
     # Create 3 individual knife entities
-    knife1 = Entity(identifier="knife", volume_liters=0.02, mass_kg=0.1)
-    knife2 = Entity(identifier="knife", volume_liters=0.02, mass_kg=0.1)
-    knife3 = Entity(identifier="knife", volume_liters=0.02, mass_kg=0.1)
+    knife1 = Entity(essence="knife", volume_liters=0.02, mass_kg=0.1)
+    knife2 = Entity(essence="knife", volume_liters=0.02, mass_kg=0.1)
+    knife3 = Entity(essence="knife", volume_liters=0.02, mass_kg=0.1)
     
     parent.add_to_container([knife1, knife2, knife3])
 
     # Query
     found = parent.query_container("knife")
     assert len(found) == 3
-    assert all(e.identifier == "knife" for e in found)
+    assert all(e.essence == "knife" for e in found)
 
     # Remove 2 entities
     removed = parent.remove_from_container("knife", count=2)
@@ -66,9 +66,9 @@ def test_container_add_query_and_remove():
 
 def test_container_remove_all():
     """Test removing all entities from a container."""
-    parent = Entity(identifier="crate")
-    ent1 = Entity(identifier="item")
-    ent2 = Entity(identifier="item")
+    parent = Entity(essence="crate")
+    ent1 = Entity(essence="item")
+    ent2 = Entity(essence="item")
     
     parent.add_to_container([ent1, ent2])
     
@@ -83,8 +83,8 @@ def test_container_remove_all():
 
 def test_container_add_with_quantity():
     """Test adding a single entity multiple times using quantity parameter."""
-    parent = Entity(identifier="crate")
-    nail = Entity(identifier="nail", volume_liters=0.001, mass_kg=0.01)
+    parent = Entity(essence="crate")
+    nail = Entity(essence="nail", volume_liters=0.001, mass_kg=0.01)
     
     # Add 1000 copies of the nail
     parent.add_to_container(nail, quantity=1000)
@@ -92,7 +92,7 @@ def test_container_add_with_quantity():
     # Query should return 1000 individual nail entities
     found = parent.query_container("nail")
     assert len(found) == 1000
-    assert all(e.identifier == "nail" for e in found)
+    assert all(e.essence == "nail" for e in found)
     assert all(e.volume_liters == pytest.approx(0.001) for e in found)
     
     # Remove 500
@@ -104,10 +104,29 @@ def test_container_add_with_quantity():
     assert len(remaining) == 500
 
 
+def test_add_content():
+    """Test adding an Entity instance to another Entity's contents by identifier."""
+    parent = Entity(essence="box")
+
+    child1 = Entity(identifier="knife-01", essence="knife", volume_liters=0.02, mass_kg=0.1)
+    parent.add_content(child1)
+
+    found = parent.query_container("knife-01")
+    assert len(found) == 1
+    # should store the same instance (not a deepcopy)
+    assert found[0] is child1
+
+    # adding another entity with same identifier appends
+    child2 = Entity(identifier="knife-01", essence="knife", volume_liters=0.02, mass_kg=0.1)
+    parent.add_content(child2)
+    found = parent.query_container("knife-01")
+    assert len(found) == 2
+
+
 def test_ablate():
     """Test ablating an entity's ablative value (ablate method)."""
     # ablate() was removed; ensure calling it raises AttributeError
-    entity = Entity(identifier="tool")
+    entity = Entity(essence="tool")
     with pytest.raises(AttributeError):
         entity.ablate(0.3)
 
@@ -115,7 +134,7 @@ def test_ablate():
 def test_reliability_test(monkeypatch):
     """Test deterministic reliability_test behavior via monkeypatching random.randint."""
     # reliability_test() was removed; calling it should raise AttributeError
-    e = Entity(identifier="test")
+    e = Entity(essence="test")
     with pytest.raises(AttributeError):
         e.reliability_test()
 

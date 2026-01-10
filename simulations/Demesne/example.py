@@ -16,12 +16,24 @@ def main():
     # set inception time to July 6, 770 AD (demonstration only)
     sim.inception_time = datetime(770, 7, 6)
 
+    # Create a location (demonstration only)
+    my_location = sim.create_location(
+        identifier="demo-location",
+        essence="land/plot/arable"
+    )
+    my_location.traversal_meter = 500.0  # set traversal meters (demonstration only)
+
+    # create a sample landplot (demonstration only)
     landplot = sim.create_landplot(
         identifier="demo-plot",
-        stage_path="land/cultivated/crop/growing/early",
-        vegetation_path="source/plant/species/cereal/wheat",
-        acreage=5.0,
+        essence= sim.domain.get_scope("land/plot/arable"),
+        stage_path= sim.domain.get_scope("state/growth/vegetative"),
+        vegetation_path= sim.domain.get_scope("source/plant/species/cereal/wheat"),
+        acreage=2.0,
     )
+
+    # Add the plot to the location (demonstration only)
+    my_location.add_content(landplot)
     
     sim.run()
 

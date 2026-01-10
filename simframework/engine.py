@@ -119,19 +119,40 @@ class SimulationEngine:
             eid = entity_id
             if eid in self.entities:
                 raise ValueError(f"entity id already registered: {eid}")
+            # assign the canonical identifier to the entity and register
+            entity.identifier = eid
             self.entities[eid] = entity
             return eid
 
         # Generate a unique id based on the entity's name and an internal counter
         base = getattr(entity, "name", None) or "entity"
-        # Loop until we find a free id; this is deterministic and will always
-        # terminate because the counter increases on each attempt.
+        # Use helper to produce a unique identifier
+        eid = self.NewUniqueIdentifier(base)
+        entity.identifier = eid
+        self.entities[eid] = entity
+        return eid
+
+    def NewUniqueIdentifier(self, id_stub: str) -> str:
+        """Return a unique identifier by appending _{counter} to `id_stub`.
+
+        The engine's internal counter is incremented for each attempt. If the
+        generated identifier collides with an existing entity id, the counter
+        continues to increment until an unused id is produced.
+
+        Args:
+            id_stub: base string to append the counter to.
+
+        Returns:
+            A unique identifier string.
+        """
+        if not isinstance(id_stub, str):
+            raise TypeError("id_stub must be a string")
+
+        # Loop until a non-colliding id is produced
         while True:
-            eid = f"{base}_{self._entity_counter}"
+            eid = f"{id_stub}_{self._entity_counter}"
             self._entity_counter += 1
             if eid not in self.entities:
-                self.entities[eid] = entity
-                entity.identifier = eid
                 return eid
 
     def get_entity(self, entity_id: str) -> Optional[Entity]:

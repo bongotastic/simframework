@@ -1,0 +1,237 @@
+# simulations/Demesne/day_schedule.yaml
+name: Demesne Daily Schedule
+
+# -------------------------------------------------------------------------
+# ANCHORS
+# -------------------------------------------------------------------------
+anchors:
+  - id: anchor_matins
+    name: "Matins"
+    trigger: solar_dawn
+    description: "Pre-dawn. The first bell."
+
+  - id: anchor_prime
+    name: "Prime"
+    trigger: solar_sunrise
+    description: "Sunrise. Work begins."
+
+  - id: anchor_tierce
+    name: "Tierce"
+    trigger: solar_morning_midpoint
+    description: "Mid-morning break (optional)."
+
+  - id: anchor_sext
+    name: "Sext"
+    trigger: solar_noon
+    description: "High Noon. The main meal (Dinner)."
+
+  - id: anchor_nones
+    name: "Nones"
+    trigger: solar_afternoon_midpoint
+    description: "Mid-afternoon. Resume full work."
+
+  - id: anchor_vespers
+    name: "Vespers"
+    trigger: solar_sunset
+    description: "Sunset. Field work ends."
+
+  - id: anchor_compline
+    name: "Compline"
+    trigger: fixed_offset_post_sunset  # e.g., +2 hours
+    description: "Darkness. Bedtime."
+
+# -------------------------------------------------------------------------
+# ROUTINES
+# -------------------------------------------------------------------------
+routines:
+
+  # -------------------------------------------------------
+  # 1. THE AGRARIAN PROFILE (Peasant/Villein)
+  # -------------------------------------------------------
+  - role: social/role/peasant/villein
+    blocks:
+      # PRE-DAWN: Wake & Prep
+      - start: anchor_matins
+        end:   anchor_prime
+        activity: activity/personal/grooming        # Dressing, washing face
+      
+      # MORNING: Hard Labor
+      - start: anchor_prime
+        end:   anchor_sext
+        activity: activity/job/agriculture/field_work
+      
+      # NOON: The Main Meal (Dinner)
+      # Essential: Consumes 'item/food/pottage' or 'bread'
+      - start: anchor_sext
+        end:   anchor_nones
+        activity: activity/personal/eat
+      
+      # AFTERNOON: Labor
+      - start: anchor_nones
+        end:   anchor_vespers
+        activity: activity/job/agriculture/field_work
+      
+      # EVENING: Subsistence (The "Second Shift")
+      # These tasks are vital for the household economy
+      - start: anchor_vespers
+        end:   anchor_vespers_plus_1
+        activity: activity/job/subsistence/chores   # Fetching water, firewood
+      
+      - start: anchor_vespers_plus_1
+        end:   anchor_compline
+        activity: activity/personal/eat             # Supper (lighter meal)
+      
+      - start: anchor_compline
+        end:   anchor_matins
+        activity: activity/personal/sleep
+
+  # -------------------------------------------------------
+  # 2. THE DRAFT PROFILE (Ploughman)
+  # *Requires early calories to handle heavy animals*
+  # -------------------------------------------------------
+  - role: social/role/ploughman
+    blocks:
+      # PRE-DAWN: Work starts early
+      - start: anchor_matins
+        end:   anchor_matins_late
+        activity: activity/job/husbandry/care       # Feed oxen first
+      
+      - start: anchor_matins_late
+        end:   anchor_prime
+        activity: activity/personal/eat             # Breakfast (needs energy)
+
+      # MORNING
+      - start: anchor_prime
+        end:   anchor_sext
+        activity: activity/job/husbandry/draft      # Plowing
+      
+      # NOON: Care & Eat
+      - start: anchor_sext
+        end:   anchor_sext_late
+        activity: activity/job/husbandry/care       # Water animals first
+      
+      - start: anchor_sext_late
+        end:   anchor_nones
+        activity: activity/personal/eat             # Ploughman's lunch
+      
+      # AFTERNOON
+      - start: anchor_nones
+        end:   anchor_vespers
+        activity: activity/job/husbandry/draft
+      
+      # EVENING
+      - start: anchor_vespers
+        end:   anchor_compline
+        activity: activity/job/husbandry/care       # Grooming/Stabling (Long shift)
+      
+      - start: anchor_compline
+        end:   anchor_matins
+        activity: activity/personal/sleep
+
+  # -------------------------------------------------------
+  # 3. THE PROVISIONER PROFILE (Baker/Cook)
+  # *Day revolves around others' eating times*
+  # -------------------------------------------------------
+  - role: social/role/baker
+    blocks:
+      # PRE-DAWN: Fire & Prep
+      - start: anchor_matins
+        end:   anchor_prime
+        activity: activity/job/production/preparation # Lighting oven (takes time)
+      
+      # MORNING: Baking
+      - start: anchor_prime
+        end:   anchor_sext
+        activity: activity/job/production/processing
+      
+      # NOON: Service (Cannot eat yet)
+      - start: anchor_sext
+        end:   anchor_sext_late
+        activity: activity/job/domestic/serving       # Dispatching bread
+      
+      - start: anchor_sext_late
+        end:   anchor_nones
+        activity: activity/personal/eat               # Late lunch
+      
+      # AFTERNOON: Prep for tomorrow
+      - start: anchor_nones
+        end:   anchor_vespers
+        activity: activity/job/production/preservation # Grinding, Sifting
+      
+      # EVENING: Cleaning
+      - start: anchor_vespers
+        end:   anchor_compline
+        activity: activity/job/domestic/cleaning      # Scrubbing troughs
+      
+      - start: anchor_compline
+        end:   anchor_matins
+        activity: activity/personal/sleep
+
+  # -------------------------------------------------------
+  # 4. THE DOMESTIC PROFILE (Servant)
+  # *High focus on grooming and waiting*
+  # -------------------------------------------------------
+  - role: social/role/chamberlain
+    blocks:
+      # PRE-DAWN: Self-Prep
+      - start: anchor_matins
+        end:   anchor_prime
+        activity: activity/personal/grooming          # Must look presentable
+      
+      # MORNING: Service
+      - start: anchor_prime
+        end:   anchor_sext
+        activity: activity/job/domestic/attendance    # Dressing Lord
+      
+      # NOON: Service (Waiting tables)
+      - start: anchor_sext
+        end:   anchor_nones
+        activity: activity/job/domestic/serving
+      
+      # AFTERNOON: Chores & Own Meal
+      - start: anchor_nones
+        end:   anchor_nones_late
+        activity: activity/personal/eat               # Eating leftovers
+      
+      - start: anchor_nones_late
+        end:   anchor_vespers
+        activity: activity/job/domestic/cleaning
+      
+      # EVENING: Social/Service
+      - start: anchor_vespers
+        end:   anchor_compline
+        activity: activity/personal/social            # Hall gossip/networking
+      
+      - start: anchor_compline
+        end:   anchor_matins
+        activity: activity/personal/sleep
+
+  # -------------------------------------------------------
+  # 5. THE ARTISAN PROFILE (Smith/Carpenter)
+  # *Standard day with clear breaks*
+  # -------------------------------------------------------
+  - role: social/role/blacksmith
+    blocks:
+      - start: anchor_matins
+        end:   anchor_prime
+        activity: activity/personal/eat               # Breakfast
+      
+      - start: anchor_prime
+        end:   anchor_sext
+        activity: activity/job/craft/fabrication
+      
+      - start: anchor_sext
+        end:   anchor_nones
+        activity: activity/personal/eat               # Dinner
+      
+      - start: anchor_nones
+        end:   anchor_vespers
+        activity: activity/job/craft/assembly
+      
+      - start: anchor_vespers
+        end:   anchor_compline
+        activity: activity/job/subsistence/chores     # Repairing own home
+      
+      - start: anchor_compline
+        end:   anchor_matins
+        activity: activity/personal/sleep
