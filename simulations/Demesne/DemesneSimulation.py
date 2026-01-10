@@ -7,6 +7,7 @@ from simframework.engine import SimulationEngine
 from simframework.entity import Entity
 from simframework.scope import Scope
 from simulations.Demesne.landplot import LandPlot
+from simulations.Demesne.calendar import Calendar
 
 
 class DemesneSimulation(SimulationEngine):
@@ -19,6 +20,8 @@ class DemesneSimulation(SimulationEngine):
         """
         if engine is None:
             super().__init__(start_time=start_time)
+            # Load the Demesne calendar for this simulation
+            self.calendar = Calendar()
         else:
             # Shallow copy key runtime attributes from provided engine
             self.scheduler = engine.scheduler
@@ -28,6 +31,8 @@ class DemesneSimulation(SimulationEngine):
             self.inception_time = getattr(engine, "inception_time", self.scheduler.now)
             self.domain = getattr(engine, "domain", None)
             self.processes = getattr(engine, "processes", {})
+            # Reuse calendar from provided engine if present, otherwise load a new one
+            self.calendar = getattr(engine, "calendar", Calendar())
 
     def setup(self):
         """Set up domain and systems (stub)."""

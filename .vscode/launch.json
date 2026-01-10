@@ -14,6 +14,17 @@
             }
         },
         {
+            "name": "Debug Demesne example",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/simulations/Demesne/example.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
             "name": "Python: Current File (script)",
             "type": "debugpy",
             "request": "launch",
